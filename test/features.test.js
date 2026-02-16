@@ -20,8 +20,8 @@ beforeEach(() => {
 // ===========================================================================
 
 describe('FEATURES array structure', () => {
-  test('contains exactly 7 features', () => {
-    expect(FEATURES).toHaveLength(7);
+  test('contains exactly 12 features', () => {
+    expect(FEATURES).toHaveLength(12);
   });
 
   test('every feature has required properties', () => {
@@ -119,6 +119,51 @@ describe('Feature definitions', () => {
     expect(f.default).toBe(false);
     expect(f.group).toBe('navigation');
   });
+
+  test('textSpacing is a toggle in content group', () => {
+    const f = getFeature('textSpacing');
+    expect(f.id).toBe('textSpacing');
+    expect(f.type).toBe('toggle');
+    expect(f.cssClass).toBe('a11y-text-spacing');
+    expect(f.default).toBe(false);
+    expect(f.group).toBe('content');
+  });
+
+  test('pauseAnimations is a toggle in visual group', () => {
+    const f = getFeature('pauseAnimations');
+    expect(f.id).toBe('pauseAnimations');
+    expect(f.type).toBe('toggle');
+    expect(f.cssClass).toBe('a11y-pause-animations');
+    expect(f.default).toBe(false);
+    expect(f.group).toBe('visual');
+  });
+
+  test('largeCursor is a toggle in navigation group', () => {
+    const f = getFeature('largeCursor');
+    expect(f.id).toBe('largeCursor');
+    expect(f.type).toBe('toggle');
+    expect(f.cssClass).toBe('a11y-large-cursor');
+    expect(f.default).toBe(false);
+    expect(f.group).toBe('navigation');
+  });
+
+  test('highlightHeadings is a toggle in content group', () => {
+    const f = getFeature('highlightHeadings');
+    expect(f.id).toBe('highlightHeadings');
+    expect(f.type).toBe('toggle');
+    expect(f.cssClass).toBe('a11y-highlight-headings');
+    expect(f.default).toBe(false);
+    expect(f.group).toBe('content');
+  });
+
+  test('invertColors is a toggle in visual group', () => {
+    const f = getFeature('invertColors');
+    expect(f.id).toBe('invertColors');
+    expect(f.type).toBe('toggle');
+    expect(f.cssClass).toBe('a11y-invert-colors');
+    expect(f.default).toBe(false);
+    expect(f.group).toBe('visual');
+  });
 });
 
 // ===========================================================================
@@ -126,19 +171,19 @@ describe('Feature definitions', () => {
 // ===========================================================================
 
 describe('Feature groups', () => {
-  test('visual group has 3 features', () => {
+  test('visual group has 5 features', () => {
     const visual = FEATURES.filter((f) => f.group === 'visual');
-    expect(visual).toHaveLength(3);
+    expect(visual).toHaveLength(5);
   });
 
-  test('content group has 3 features', () => {
+  test('content group has 5 features', () => {
     const content = FEATURES.filter((f) => f.group === 'content');
-    expect(content).toHaveLength(3);
+    expect(content).toHaveLength(5);
   });
 
-  test('navigation group has 1 feature', () => {
+  test('navigation group has 2 features', () => {
     const nav = FEATURES.filter((f) => f.group === 'navigation');
-    expect(nav).toHaveLength(1);
+    expect(nav).toHaveLength(2);
   });
 });
 

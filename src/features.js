@@ -33,6 +33,21 @@ const ICONS = {
 
   fontSize:
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/><path d="M15 7V4"/><path d="M9 7V4"/></svg>',
+
+  textSpacing:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10H3"/><path d="M21 6H3"/><path d="M21 14H3"/><path d="M21 18H3"/></svg>',
+
+  pauseAnimations:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>',
+
+  largeCursor:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4l7 18 2.5-7.5L21 12z"/></svg>',
+
+  highlightHeadings:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v16"/><path d="M18 4v16"/><path d="M6 12h12"/></svg>',
+
+  invertColors:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2v20"/><path d="M12 2a10 10 0 0 0 0 20" fill="currentColor"/></svg>',
 };
 
 // ---------------------------------------------------------------------------
@@ -112,6 +127,46 @@ const FEATURES = [
     default: false,
     icon: ICONS.focusOutline,
     group: 'navigation',
+  },
+  {
+    id: 'textSpacing',
+    type: 'toggle',
+    cssClass: 'a11y-text-spacing',
+    default: false,
+    icon: ICONS.textSpacing,
+    group: 'content',
+  },
+  {
+    id: 'pauseAnimations',
+    type: 'toggle',
+    cssClass: 'a11y-pause-animations',
+    default: false,
+    icon: ICONS.pauseAnimations,
+    group: 'visual',
+  },
+  {
+    id: 'largeCursor',
+    type: 'toggle',
+    cssClass: 'a11y-large-cursor',
+    default: false,
+    icon: ICONS.largeCursor,
+    group: 'navigation',
+  },
+  {
+    id: 'highlightHeadings',
+    type: 'toggle',
+    cssClass: 'a11y-highlight-headings',
+    default: false,
+    icon: ICONS.highlightHeadings,
+    group: 'content',
+  },
+  {
+    id: 'invertColors',
+    type: 'toggle',
+    cssClass: 'a11y-invert-colors',
+    default: false,
+    icon: ICONS.invertColors,
+    group: 'visual',
   },
 ];
 

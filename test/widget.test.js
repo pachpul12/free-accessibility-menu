@@ -72,6 +72,11 @@ var TOGGLE_FEATURE_IDS = [
   'underlineLinks',
   'hideImages',
   'focusOutline',
+  'textSpacing',
+  'pauseAnimations',
+  'largeCursor',
+  'highlightHeadings',
+  'invertColors',
 ];
 var ALL_FEATURE_IDS = TOGGLE_FEATURE_IDS.concat(['fontSize']);
 var FEATURE_CSS = {
@@ -81,6 +86,11 @@ var FEATURE_CSS = {
   underlineLinks: 'a11y-underline-links',
   hideImages: 'a11y-hide-images',
   focusOutline: 'a11y-focus-outline',
+  textSpacing: 'a11y-text-spacing',
+  pauseAnimations: 'a11y-pause-animations',
+  largeCursor: 'a11y-large-cursor',
+  highlightHeadings: 'a11y-highlight-headings',
+  invertColors: 'a11y-invert-colors',
 };
 
 // ---------------------------------------------------------------------------
@@ -194,7 +204,7 @@ describe('DOM Structure', () => {
     expect(getTitle().textContent).toBe('Accessibility Menu');
   });
 
-  test('all 7 features rendered as menu items', () => {
+  test('all 12 features rendered as menu items', () => {
     ALL_FEATURE_IDS.forEach((id) => {
       expect(getFeatureItem(id)).not.toBeNull();
     });
@@ -1274,10 +1284,108 @@ describe('All features disabled edge case', () => {
         underlineLinks: false,
         hideImages: false,
         focusOutline: false,
+        textSpacing: false,
+        pauseAnimations: false,
+        largeCursor: false,
+        highlightHeadings: false,
+        invertColors: false,
       },
     });
     expect(getRoot()).not.toBeNull();
     expect(getToggleBtn()).not.toBeNull();
     expect(Object.keys(w.getSettings())).toHaveLength(0);
+  });
+});
+
+// ===========================================================================
+// 17. New Features (Later Priority)
+// ===========================================================================
+
+describe('New Features - Text Spacing', () => {
+  test('toggling textSpacing adds CSS class to body', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('textSpacing'));
+    expect(document.body.classList.contains('a11y-text-spacing')).toBe(true);
+  });
+
+  test('toggling textSpacing off removes CSS class', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('textSpacing'));
+    simulateClick(getFeatureItem('textSpacing'));
+    expect(document.body.classList.contains('a11y-text-spacing')).toBe(false);
+  });
+
+  test('textSpacing persists to localStorage', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('textSpacing'));
+    var saved = JSON.parse(localStorage.getItem('a11yWidgetSettings'));
+    expect(saved.textSpacing).toBe(true);
+  });
+});
+
+describe('New Features - Pause Animations', () => {
+  test('toggling pauseAnimations adds CSS class to body', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('pauseAnimations'));
+    expect(document.body.classList.contains('a11y-pause-animations')).toBe(true);
+  });
+
+  test('toggling pauseAnimations off removes CSS class', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('pauseAnimations'));
+    simulateClick(getFeatureItem('pauseAnimations'));
+    expect(document.body.classList.contains('a11y-pause-animations')).toBe(false);
+  });
+});
+
+describe('New Features - Large Cursor', () => {
+  test('toggling largeCursor adds CSS class to body', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('largeCursor'));
+    expect(document.body.classList.contains('a11y-large-cursor')).toBe(true);
+  });
+
+  test('toggling largeCursor off removes CSS class', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('largeCursor'));
+    simulateClick(getFeatureItem('largeCursor'));
+    expect(document.body.classList.contains('a11y-large-cursor')).toBe(false);
+  });
+});
+
+describe('New Features - Highlight Headings', () => {
+  test('toggling highlightHeadings adds CSS class to body', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('highlightHeadings'));
+    expect(document.body.classList.contains('a11y-highlight-headings')).toBe(true);
+  });
+
+  test('toggling highlightHeadings off removes CSS class', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('highlightHeadings'));
+    simulateClick(getFeatureItem('highlightHeadings'));
+    expect(document.body.classList.contains('a11y-highlight-headings')).toBe(false);
+  });
+});
+
+describe('New Features - Invert Colors', () => {
+  test('toggling invertColors adds CSS class to body', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('invertColors'));
+    expect(document.body.classList.contains('a11y-invert-colors')).toBe(true);
+  });
+
+  test('toggling invertColors off removes CSS class', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('invertColors'));
+    simulateClick(getFeatureItem('invertColors'));
+    expect(document.body.classList.contains('a11y-invert-colors')).toBe(false);
+  });
+
+  test('invertColors callback fires', () => {
+    var onToggle = jest.fn();
+    AccessibilityWidget.init({ onToggle });
+    simulateClick(getFeatureItem('invertColors'));
+    expect(onToggle).toHaveBeenCalledWith('invertColors', true);
   });
 });

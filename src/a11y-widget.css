@@ -724,6 +724,98 @@ body.a11y-hide-images [style*='background-image']:not(.a11y-widget [style*='back
 }
 
 /* --------------------------------------------------------------------------
+   Text Spacing
+   -------------------------------------------------------------------------- */
+
+body.a11y-text-spacing *:not(.a11y-widget):not(.a11y-widget *) {
+  line-height: 1.8 !important;
+  letter-spacing: 0.12em !important;
+  word-spacing: 0.16em !important;
+}
+
+body.a11y-text-spacing p:not(.a11y-widget p),
+body.a11y-text-spacing li:not(.a11y-widget li),
+body.a11y-text-spacing dd:not(.a11y-widget dd) {
+  margin-bottom: 1.2em !important;
+}
+
+/* --------------------------------------------------------------------------
+   Pause Animations
+   -------------------------------------------------------------------------- */
+
+body.a11y-pause-animations *:not(.a11y-widget):not(.a11y-widget *) {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+body.a11y-pause-animations *:not(.a11y-widget):not(.a11y-widget *)::before,
+body.a11y-pause-animations *:not(.a11y-widget):not(.a11y-widget *)::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+/* --------------------------------------------------------------------------
+   Large Cursor
+   -------------------------------------------------------------------------- */
+
+body.a11y-large-cursor,
+body.a11y-large-cursor *:not(.a11y-widget):not(.a11y-widget *) {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M4 4l7 24 3.5-10L25 15z' fill='black' stroke='white' stroke-width='1.5'/%3E%3C/svg%3E") 4 4, auto !important;
+}
+
+body.a11y-large-cursor a:not(.a11y-widget a),
+body.a11y-large-cursor button:not(.a11y-widget button),
+body.a11y-large-cursor [role="button"]:not(.a11y-widget [role="button"]),
+body.a11y-large-cursor input:not(.a11y-widget input),
+body.a11y-large-cursor select:not(.a11y-widget select),
+body.a11y-large-cursor textarea:not(.a11y-widget textarea),
+body.a11y-large-cursor label:not(.a11y-widget label),
+body.a11y-large-cursor summary:not(.a11y-widget summary) {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M10 2C10 2 10 22 10 22L14 18L18 26L22 24L18 16L24 16Z' fill='black' stroke='white' stroke-width='1.5'/%3E%3C/svg%3E") 10 2, pointer !important;
+}
+
+/* --------------------------------------------------------------------------
+   Highlight Headings
+   -------------------------------------------------------------------------- */
+
+body.a11y-highlight-headings h1:not(.a11y-widget h1),
+body.a11y-highlight-headings h2:not(.a11y-widget h2),
+body.a11y-highlight-headings h3:not(.a11y-widget h3),
+body.a11y-highlight-headings h4:not(.a11y-widget h4),
+body.a11y-highlight-headings h5:not(.a11y-widget h5),
+body.a11y-highlight-headings h6:not(.a11y-widget h6) {
+  outline: 2px solid #1a73e8 !important;
+  outline-offset: 4px !important;
+  padding: 4px 8px !important;
+  background-color: rgba(26, 115, 232, 0.08) !important;
+  border-radius: 3px !important;
+}
+
+/* --------------------------------------------------------------------------
+   Invert Colors
+   -------------------------------------------------------------------------- */
+
+body.a11y-invert-colors {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+body.a11y-invert-colors img:not(.a11y-widget img),
+body.a11y-invert-colors video:not(.a11y-widget video),
+body.a11y-invert-colors picture:not(.a11y-widget picture),
+body.a11y-invert-colors canvas:not(.a11y-widget canvas),
+body.a11y-invert-colors svg:not(.a11y-widget svg):not(.a11y-widget__item-icon svg) {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+/* Keep the widget itself un-inverted */
+body.a11y-invert-colors .a11y-widget {
+  filter: invert(1) hue-rotate(180deg) !important;
+}
+
+/* --------------------------------------------------------------------------
    Font Size Scaling (body.a11y-font-1 through body.a11y-font-5)
    -------------------------------------------------------------------------- */
 
