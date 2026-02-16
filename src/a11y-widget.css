@@ -1,0 +1,842 @@
+/* ==========================================================================
+   Accessibility Widget - Main Stylesheet
+   A floating accessibility menu widget with BEM naming, CSS custom properties,
+   RTL support, responsive layout, and reduced-motion compliance.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. CSS Custom Properties (Design Tokens)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget {
+  --a11y-primary: #1a73e8;
+  --a11y-primary-hover: #1557b0;
+  --a11y-bg: #ffffff;
+  --a11y-bg-dark: #1e1e1e;
+  --a11y-text: #333333;
+  --a11y-text-dark: #f0f0f0;
+  --a11y-border: #e0e0e0;
+  --a11y-active-bg: #e8f0fe;
+  --a11y-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  --a11y-radius: 12px;
+  --a11y-toggle-size: 56px;
+  --a11y-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    sans-serif;
+}
+
+/* --------------------------------------------------------------------------
+   2. Root Container (.a11y-widget)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 999999;
+  font-family: var(--a11y-font-family);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--a11y-text);
+  direction: ltr;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.a11y-widget *,
+.a11y-widget *::before,
+.a11y-widget *::after {
+  box-sizing: border-box;
+}
+
+/* --------------------------------------------------------------------------
+   3. Toggle Button (.a11y-widget__toggle)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--a11y-toggle-size);
+  height: var(--a11y-toggle-size);
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background-color: var(--a11y-primary);
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease,
+    background-color 0.2s ease;
+  position: relative;
+}
+
+.a11y-widget__toggle:hover {
+  background-color: var(--a11y-primary-hover);
+  transform: scale(1.08);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28);
+}
+
+.a11y-widget__toggle:active {
+  transform: scale(0.96);
+}
+
+.a11y-widget__toggle:focus-visible {
+  outline: 2px solid var(--a11y-primary);
+  outline-offset: 2px;
+}
+
+.a11y-widget__toggle svg {
+  width: 28px;
+  height: 28px;
+  fill: currentColor;
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   4. Panel (.a11y-widget__panel)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__panel {
+  position: absolute;
+  bottom: calc(var(--a11y-toggle-size) + 12px);
+  right: 0;
+  width: 320px;
+  max-height: 80vh;
+  background-color: var(--a11y-bg);
+  border-radius: var(--a11y-radius);
+  box-shadow: var(--a11y-shadow);
+  border: 1px solid var(--a11y-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(12px) scale(0.96);
+  transform-origin: bottom right;
+  transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease;
+}
+
+.a11y-widget--open .a11y-widget__panel {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+
+/* --------------------------------------------------------------------------
+   5. Panel Header (.a11y-widget__header)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--a11y-border);
+  flex-shrink: 0;
+}
+
+/* --------------------------------------------------------------------------
+   6. Title (.a11y-widget__title)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--a11y-text);
+  margin: 0;
+  line-height: 1.3;
+}
+
+/* --------------------------------------------------------------------------
+   7. Close Button (.a11y-widget__close)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--a11y-text);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.a11y-widget__close:hover {
+  background-color: rgba(0, 0, 0, 0.06);
+  color: #c62828;
+}
+
+.a11y-widget__close:focus-visible {
+  outline: 2px solid var(--a11y-primary);
+  outline-offset: 2px;
+}
+
+.a11y-widget__close svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   8. Content Area (.a11y-widget__content)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__content {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 12px 16px;
+  overscroll-behavior: contain;
+}
+
+/* Custom scrollbar for the content area */
+.a11y-widget__content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.a11y-widget__content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.a11y-widget__content::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+}
+
+.a11y-widget__content::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.25);
+}
+
+/* --------------------------------------------------------------------------
+   9. Section (.a11y-widget__section)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__section {
+  margin-bottom: 16px;
+}
+
+.a11y-widget__section:last-child {
+  margin-bottom: 0;
+}
+
+/* --------------------------------------------------------------------------
+   10. Section Title (.a11y-widget__section-title)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__section-title {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #888888;
+  margin: 0 0 8px 0;
+  padding: 0 4px;
+}
+
+/* --------------------------------------------------------------------------
+   11. Menu Item (.a11y-widget__item)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  background: transparent;
+  width: 100%;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--a11y-text);
+  text-align: left;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.a11y-widget__item:last-child {
+  margin-bottom: 0;
+}
+
+.a11y-widget__item:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.a11y-widget__item:focus-visible {
+  outline: 2px solid var(--a11y-primary);
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   12. Active Item (.a11y-widget__item--active)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__item--active {
+  background-color: var(--a11y-active-bg);
+  border-left: 3px solid var(--a11y-primary);
+}
+
+.a11y-widget__item--active:hover {
+  background-color: #dce8fd;
+}
+
+/* --------------------------------------------------------------------------
+   13. Item Icon (.a11y-widget__item-icon)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  color: var(--a11y-primary);
+}
+
+.a11y-widget__item-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+/* --------------------------------------------------------------------------
+   14. Item Label (.a11y-widget__item-label)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__item-label {
+  flex: 1 1 auto;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--a11y-text);
+  user-select: none;
+}
+
+/* --------------------------------------------------------------------------
+   15. Toggle Switch (.a11y-widget__item-toggle)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__item-toggle {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 11px;
+  background-color: #cccccc;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: background-color 0.2s ease;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.a11y-widget__item-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease;
+}
+
+/* Toggle ON state */
+.a11y-widget__item--active .a11y-widget__item-toggle,
+[aria-checked='true'] .a11y-widget__item-toggle {
+  background-color: var(--a11y-primary);
+}
+
+.a11y-widget__item--active .a11y-widget__item-toggle::after,
+[aria-checked='true'] .a11y-widget__item-toggle::after {
+  transform: translateX(18px);
+}
+
+.a11y-widget__item-toggle:focus-visible {
+  outline: 2px solid var(--a11y-primary);
+  outline-offset: 2px;
+}
+
+.a11y-widget__item-toggle:hover {
+  opacity: 0.85;
+}
+
+/* --------------------------------------------------------------------------
+   16. Font Size Controls (.a11y-widget__font-controls)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__font-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* --------------------------------------------------------------------------
+   17. Font Size Button (.a11y-widget__font-btn)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__font-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--a11y-border);
+  border-radius: 50%;
+  background-color: var(--a11y-bg);
+  color: var(--a11y-text);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.a11y-widget__font-btn:hover {
+  background-color: var(--a11y-primary);
+  border-color: var(--a11y-primary);
+  color: #ffffff;
+}
+
+.a11y-widget__font-btn:active {
+  transform: scale(0.92);
+}
+
+.a11y-widget__font-btn:focus-visible {
+  outline: 2px solid var(--a11y-primary);
+  outline-offset: 2px;
+}
+
+.a11y-widget__font-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.a11y-widget__font-btn:disabled:hover {
+  background-color: var(--a11y-bg);
+  border-color: var(--a11y-border);
+  color: var(--a11y-text);
+}
+
+/* --------------------------------------------------------------------------
+   18. Footer (.a11y-widget__footer)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--a11y-border);
+  flex-shrink: 0;
+}
+
+/* --------------------------------------------------------------------------
+   19. Disclaimer (.a11y-widget__disclaimer)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__disclaimer {
+  font-size: 11px;
+  line-height: 1.5;
+  color: #888888;
+  margin: 0 0 8px 0;
+}
+
+/* --------------------------------------------------------------------------
+   20. Reset Button (.a11y-widget__reset)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__reset {
+  display: inline-block;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--a11y-primary);
+  font-size: 13px;
+  font-family: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.a11y-widget__reset:hover {
+  color: var(--a11y-primary-hover);
+}
+
+.a11y-widget__reset:focus-visible {
+  outline: 2px solid var(--a11y-primary);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   MODIFIERS
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   RTL Modifier (.a11y-widget--rtl)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget--rtl {
+  right: auto;
+  left: 20px;
+  direction: rtl;
+  text-align: right;
+}
+
+.a11y-widget--rtl .a11y-widget__panel {
+  right: auto;
+  left: 0;
+  transform-origin: bottom left;
+}
+
+.a11y-widget--rtl .a11y-widget__item {
+  text-align: right;
+  flex-direction: row-reverse;
+}
+
+.a11y-widget--rtl .a11y-widget__item--active {
+  border-left: 3px solid transparent;
+  border-right: 3px solid var(--a11y-primary);
+}
+
+.a11y-widget--rtl .a11y-widget__header {
+  flex-direction: row-reverse;
+}
+
+.a11y-widget--rtl .a11y-widget__font-controls {
+  flex-direction: row-reverse;
+}
+
+/* ==========================================================================
+   ACCESSIBILITY FEATURE CLASSES (applied to <body>)
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   High Contrast Mode
+   -------------------------------------------------------------------------- */
+
+body.a11y-high-contrast {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+body.a11y-high-contrast p:not(.a11y-widget p),
+body.a11y-high-contrast span:not(.a11y-widget span),
+body.a11y-high-contrast div:not(.a11y-widget div),
+body.a11y-high-contrast li:not(.a11y-widget li),
+body.a11y-high-contrast h1:not(.a11y-widget h1),
+body.a11y-high-contrast h2:not(.a11y-widget h2),
+body.a11y-high-contrast h3:not(.a11y-widget h3),
+body.a11y-high-contrast h4:not(.a11y-widget h4),
+body.a11y-high-contrast h5:not(.a11y-widget h5),
+body.a11y-high-contrast h6:not(.a11y-widget h6),
+body.a11y-high-contrast td:not(.a11y-widget td),
+body.a11y-high-contrast th:not(.a11y-widget th),
+body.a11y-high-contrast label:not(.a11y-widget label) {
+  color: #000000 !important;
+}
+
+body.a11y-high-contrast a:not(.a11y-widget a) {
+  color: #0000ee !important;
+}
+
+body.a11y-high-contrast
+  img:not(.a11y-widget img):not(.a11y-widget__item-icon img) {
+  border: 2px solid #000000 !important;
+}
+
+body.a11y-high-contrast button:not(.a11y-widget button),
+body.a11y-high-contrast input:not(.a11y-widget input),
+body.a11y-high-contrast select:not(.a11y-widget select),
+body.a11y-high-contrast textarea:not(.a11y-widget textarea) {
+  border: 2px solid #000000 !important;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* --------------------------------------------------------------------------
+   Dark Mode
+   -------------------------------------------------------------------------- */
+
+body.a11y-dark-mode {
+  background-color: #1e1e1e !important;
+  color: #f0f0f0 !important;
+}
+
+body.a11y-dark-mode p:not(.a11y-widget p),
+body.a11y-dark-mode span:not(.a11y-widget span),
+body.a11y-dark-mode div:not(.a11y-widget div),
+body.a11y-dark-mode li:not(.a11y-widget li),
+body.a11y-dark-mode h1:not(.a11y-widget h1),
+body.a11y-dark-mode h2:not(.a11y-widget h2),
+body.a11y-dark-mode h3:not(.a11y-widget h3),
+body.a11y-dark-mode h4:not(.a11y-widget h4),
+body.a11y-dark-mode h5:not(.a11y-widget h5),
+body.a11y-dark-mode h6:not(.a11y-widget h6),
+body.a11y-dark-mode td:not(.a11y-widget td),
+body.a11y-dark-mode th:not(.a11y-widget th),
+body.a11y-dark-mode label:not(.a11y-widget label) {
+  color: #f0f0f0 !important;
+}
+
+body.a11y-dark-mode table:not(.a11y-widget table),
+body.a11y-dark-mode hr:not(.a11y-widget hr) {
+  border-color: #444444 !important;
+}
+
+body.a11y-dark-mode a:not(.a11y-widget a) {
+  color: #6db3f2 !important;
+}
+
+body.a11y-dark-mode img:not(.a11y-widget img) {
+  opacity: 0.85;
+}
+
+/* Dark mode styling for the widget panel itself */
+body.a11y-dark-mode .a11y-widget__panel {
+  background-color: var(--a11y-bg-dark);
+  border-color: #444444;
+}
+
+body.a11y-dark-mode .a11y-widget__title,
+body.a11y-dark-mode .a11y-widget__item-label,
+body.a11y-dark-mode .a11y-widget__close {
+  color: var(--a11y-text-dark);
+}
+
+body.a11y-dark-mode .a11y-widget__header,
+body.a11y-dark-mode .a11y-widget__footer {
+  border-color: #444444;
+}
+
+body.a11y-dark-mode .a11y-widget__item:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+body.a11y-dark-mode .a11y-widget__item--active {
+  background-color: rgba(26, 115, 232, 0.15);
+}
+
+body.a11y-dark-mode .a11y-widget__item--active:hover {
+  background-color: rgba(26, 115, 232, 0.22);
+}
+
+body.a11y-dark-mode .a11y-widget__section-title {
+  color: #aaaaaa;
+}
+
+body.a11y-dark-mode .a11y-widget__disclaimer {
+  color: #999999;
+}
+
+body.a11y-dark-mode .a11y-widget__font-btn {
+  background-color: #2a2a2a;
+  border-color: #555555;
+  color: var(--a11y-text-dark);
+}
+
+body.a11y-dark-mode .a11y-widget__font-btn:hover {
+  background-color: var(--a11y-primary);
+  border-color: var(--a11y-primary);
+  color: #ffffff;
+}
+
+body.a11y-dark-mode .a11y-widget__content::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+body.a11y-dark-mode .a11y-widget__close:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* --------------------------------------------------------------------------
+   Dyslexia-Friendly Font
+   -------------------------------------------------------------------------- */
+
+body.a11y-dyslexia-font,
+body.a11y-dyslexia-font *:not(.a11y-widget):not(.a11y-widget *) {
+  font-family: 'OpenDyslexic', 'Comic Sans MS', 'Comic Sans', cursive !important;
+}
+
+/* --------------------------------------------------------------------------
+   Underline Links
+   -------------------------------------------------------------------------- */
+
+body.a11y-underline-links a:not(.a11y-widget a) {
+  text-decoration: underline !important;
+  text-underline-offset: 3px !important;
+  text-decoration-thickness: 2px !important;
+}
+
+body.a11y-underline-links a:not(.a11y-widget a):not([class]) {
+  color: #1a0dab !important;
+}
+
+body.a11y-underline-links.a11y-dark-mode a:not(.a11y-widget a):not([class]) {
+  color: #8ab4f8 !important;
+}
+
+/* --------------------------------------------------------------------------
+   Focus Outline
+   -------------------------------------------------------------------------- */
+
+body.a11y-focus-outline a:focus,
+body.a11y-focus-outline button:focus,
+body.a11y-focus-outline input:focus,
+body.a11y-focus-outline select:focus,
+body.a11y-focus-outline textarea:focus,
+body.a11y-focus-outline [tabindex]:focus,
+body.a11y-focus-outline [role='button']:focus,
+body.a11y-focus-outline [role='link']:focus,
+body.a11y-focus-outline [role='menuitem']:focus,
+body.a11y-focus-outline [role='menuitemcheckbox']:focus,
+body.a11y-focus-outline summary:focus {
+  outline: 3px solid #ff6600 !important;
+  outline-offset: 2px !important;
+}
+
+/* --------------------------------------------------------------------------
+   Hide Images
+   -------------------------------------------------------------------------- */
+
+body.a11y-hide-images img:not(.a11y-widget img):not(.a11y-widget__item-icon img),
+body.a11y-hide-images svg:not(.a11y-widget svg):not(.a11y-widget__item-icon svg),
+body.a11y-hide-images picture:not(.a11y-widget picture),
+body.a11y-hide-images video:not(.a11y-widget video) {
+  display: none !important;
+}
+
+body.a11y-hide-images [style*='background-image']:not(.a11y-widget [style*='background-image']) {
+  background-image: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   Font Size Scaling (body.a11y-font-1 through body.a11y-font-5)
+   -------------------------------------------------------------------------- */
+
+body.a11y-font-1 {
+  font-size: 112.5% !important;
+}
+
+body.a11y-font-2 {
+  font-size: 125% !important;
+}
+
+body.a11y-font-3 {
+  font-size: 137.5% !important;
+}
+
+body.a11y-font-4 {
+  font-size: 150% !important;
+}
+
+body.a11y-font-5 {
+  font-size: 175% !important;
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN
+   ========================================================================== */
+
+@media (max-width: 480px) {
+  .a11y-widget__panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-height: 70vh;
+    border-radius: var(--a11y-radius) var(--a11y-radius) 0 0;
+    transform: translateY(100%);
+    transform-origin: bottom center;
+  }
+
+  .a11y-widget--open .a11y-widget__panel {
+    transform: translateY(0);
+  }
+
+  /* RTL on mobile: panel positioning is the same (full-width) */
+  .a11y-widget--rtl .a11y-widget__panel {
+    left: 0;
+    right: 0;
+  }
+}
+
+/* ==========================================================================
+   REDUCED MOTION
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .a11y-widget__toggle,
+  .a11y-widget__panel,
+  .a11y-widget__item,
+  .a11y-widget__item-toggle,
+  .a11y-widget__item-toggle::after,
+  .a11y-widget__close,
+  .a11y-widget__font-btn,
+  .a11y-widget__reset {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .a11y-widget__toggle:hover {
+    transform: none;
+  }
+
+  .a11y-widget__toggle:active {
+    transform: none;
+  }
+
+  .a11y-widget__font-btn:active {
+    transform: none;
+  }
+}
+
+/* ==========================================================================
+   HIGH-CONTRAST MODE - WIDGET PANEL ADAPTATION
+   When high contrast is on, ensure the widget panel remains legible.
+   ========================================================================== */
+
+body.a11y-high-contrast .a11y-widget__panel {
+  border: 2px solid #000000;
+}
+
+body.a11y-high-contrast .a11y-widget__header {
+  border-bottom: 2px solid #000000;
+}
+
+body.a11y-high-contrast .a11y-widget__footer {
+  border-top: 2px solid #000000;
+}
+
+body.a11y-high-contrast .a11y-widget__item {
+  border: 1px solid #000000;
+}
+
+body.a11y-high-contrast .a11y-widget__item--active {
+  border-left: 3px solid var(--a11y-primary);
+}
+
+/* ==========================================================================
+   PRINT STYLES
+   Hide the widget entirely when printing.
+   ========================================================================== */
+
+@media print {
+  .a11y-widget {
+    display: none !important;
+  }
+}

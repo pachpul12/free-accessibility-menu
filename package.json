@@ -1,0 +1,44 @@
+{
+  "name": "free-accessibility-menu",
+  "version": "1.0.0",
+  "description": "A free, client-side accessibility menu widget with zero dependencies",
+  "main": "dist/a11y-widget.umd.js",
+  "module": "dist/a11y-widget.esm.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "test": "jest --coverage",
+    "test:watch": "jest --watch",
+    "lint": "eslint src/",
+    "clean": "rimraf dist",
+    "prepublishOnly": "npm run clean && npm run build"
+  },
+  "devDependencies": {
+    "rollup": "^4.9.0",
+    "@rollup/plugin-terser": "^0.4.4",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "@babel/core": "^7.24.0",
+    "@babel/preset-env": "^7.24.0",
+    "babel-jest": "^29.7.0",
+    "eslint": "^8.56.0",
+    "rimraf": "^5.0.5",
+    "axe-core": "^4.8.0"
+  },
+  "keywords": [
+    "accessibility",
+    "a11y",
+    "widget",
+    "wcag",
+    "aria",
+    "menu"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/user/free-accessibility-menu"
+  }
+}

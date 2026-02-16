@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accessibility Widget Demo</title>
+
+  <!-- Widget stylesheet -->
+  <link rel="stylesheet" href="../dist/a11y-widget.css">
+
+  <!-- Page styles (independent of the widget) -->
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        Oxygen, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+      font-size: 1rem;
+      line-height: 1.6;
+      color: #222;
+      background-color: #fafafa;
+    }
+
+    /* ---------- Header / Navigation ---------- */
+    .site-header {
+      background-color: #1a3d5c;
+      color: #fff;
+      padding: 0;
+    }
+
+    .site-header__inner {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .site-header__brand {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #fff;
+      text-decoration: none;
+    }
+
+    .site-nav {
+      display: flex;
+      gap: 20px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .site-nav a {
+      color: #ccdbe8;
+      text-decoration: none;
+      font-size: 0.95rem;
+      transition: color 0.15s ease;
+    }
+
+    .site-nav a:hover,
+    .site-nav a:focus {
+      color: #fff;
+    }
+
+    /* ---------- Main content ---------- */
+    .main-content {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 32px 24px 64px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin: 0 0 8px;
+      color: #1a3d5c;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      margin: 40px 0 12px;
+      color: #1a3d5c;
+    }
+
+    h3 {
+      font-size: 1.17rem;
+      margin: 28px 0 8px;
+      color: #2c5f8a;
+    }
+
+    p {
+      margin: 0 0 16px;
+    }
+
+    a {
+      color: #1a73e8;
+    }
+
+    /* ---------- Images ---------- */
+    .image-row {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+
+    .image-row img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 6px;
+    }
+
+    /* ---------- List ---------- */
+    .feature-list {
+      padding-left: 20px;
+      margin: 0 0 24px;
+    }
+
+    .feature-list li {
+      margin-bottom: 6px;
+    }
+
+    /* ---------- Form ---------- */
+    .demo-form {
+      background-color: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 24px;
+      max-width: 520px;
+    }
+
+    .demo-form fieldset {
+      border: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .demo-form legend {
+      font-size: 1.17rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #1a3d5c;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 8px 12px;
+      font-size: 1rem;
+      font-family: inherit;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background-color: #fff;
+    }
+
+    .form-group textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: 2px solid #1a73e8;
+      outline-offset: 1px;
+      border-color: #1a73e8;
+    }
+
+    .btn-submit {
+      display: inline-block;
+      padding: 10px 24px;
+      font-size: 1rem;
+      font-family: inherit;
+      font-weight: 600;
+      color: #fff;
+      background-color: #1a73e8;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+
+    .btn-submit:hover {
+      background-color: #1557b0;
+    }
+
+    .btn-submit:focus {
+      outline: 2px solid #1a73e8;
+      outline-offset: 2px;
+    }
+
+    /* ---------- Footer ---------- */
+    .site-footer {
+      background-color: #1a3d5c;
+      color: #ccdbe8;
+      padding: 24px;
+      margin-top: 48px;
+    }
+
+    .site-footer__inner {
+      max-width: 960px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 0.875rem;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 16px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .footer-links a {
+      color: #ccdbe8;
+      text-decoration: none;
+    }
+
+    .footer-links a:hover,
+    .footer-links a:focus {
+      color: #fff;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== Header with navigation ===== -->
+  <header class="site-header">
+    <div class="site-header__inner">
+      <a href="#" class="site-header__brand">AccessiDemo</a>
+      <nav aria-label="Main navigation">
+        <ul class="site-nav">
+          <li><a href="#about">About</a></li>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#gallery">Gallery</a></li>
+          <li><a href="#contact">Contact</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ===== Main content ===== -->
+  <main class="main-content">
+
+    <h1>Accessibility Widget Demo</h1>
+    <p>
+      This page demonstrates the Free Accessibility Menu widget. Use the
+      floating button in the bottom-right corner to open the accessibility
+      panel and try out different features on this sample content.
+    </p>
+
+    <!-- About section -->
+    <section id="about">
+      <h2>About This Project</h2>
+      <p>
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum
+        ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia
+        curae; Suspendisse potenti. Nulla facilisi. Praesent commodo cursus
+        magna, vel scelerisque nisl consectetur et. Donec sed odio dui.
+        Integer posuere erat a ante venenatis dapibus posuere velit aliquet.
+      </p>
+      <p>
+        Cras justo odio, dapibus ut facilisis in, egestas eget quam. Morbi
+        leo risus, porta ac consectetur ac, vestibulum at eros. Maecenas
+        faucibus mollis interdum. Aenean lacinia bibendum nulla sed
+        consectetur. Vivamus sagittis lacus vel augue laoreet rutrum faucibus
+        dolor auctor.
+      </p>
+    </section>
+
+    <!-- Features section -->
+    <section id="features">
+      <h2>Widget Features</h2>
+      <p>The accessibility widget includes the following features:</p>
+
+      <ul class="feature-list">
+        <li><strong>High Contrast</strong> -- increases contrast between text and backgrounds</li>
+        <li><strong>Dark Mode</strong> -- switches to a dark colour scheme to reduce eye strain</li>
+        <li><strong>Font Size</strong> -- adjustable text scaling from default up to 150%</li>
+        <li><strong>Dyslexia-Friendly Font</strong> -- applies a typeface designed for easier reading</li>
+        <li><strong>Underline Links</strong> -- makes hyperlinks more visually distinct</li>
+        <li><strong>Hide Images</strong> -- removes images for distraction-free reading</li>
+        <li><strong>Focus Outline</strong> -- highlights the currently focused interactive element</li>
+      </ul>
+
+      <h3>Multilingual Support</h3>
+      <p>
+        The widget supports multiple languages out of the box. In this demo
+        you can switch between English and Hebrew, which also demonstrates
+        the right-to-left layout support. Additional languages can be
+        registered at runtime through the public API.
+      </p>
+
+      <h3>Persistent Settings</h3>
+      <p>
+        Your preferences are stored in the browser's localStorage, so they
+        persist across page reloads. Use the "Reset All" button inside the
+        widget to clear saved settings and return to the defaults.
+      </p>
+    </section>
+
+    <!-- Gallery section with images -->
+    <section id="gallery">
+      <h2>Image Gallery</h2>
+      <p>
+        These placeholder images demonstrate how the "Hide Images" feature
+        works. Toggle it on in the widget to remove all images from the page.
+      </p>
+
+      <div class="image-row">
+        <img
+          src="https://placehold.co/600x400/1a3d5c/ffffff?text=Placeholder+1"
+          alt="Placeholder image 1 with dark blue background"
+          width="600"
+          height="400"
+        >
+        <img
+          src="https://placehold.co/600x400/2c5f8a/ffffff?text=Placeholder+2"
+          alt="Placeholder image 2 with medium blue background"
+          width="600"
+          height="400"
+        >
+      </div>
+      <div class="image-row">
+        <img
+          src="https://placehold.co/600x400/5a9bd5/ffffff?text=Placeholder+3"
+          alt="Placeholder image 3 with light blue background"
+          width="600"
+          height="400"
+        >
+      </div>
+    </section>
+
+    <!-- Contact form section -->
+    <section id="contact">
+      <h2>Contact Us</h2>
+      <p>
+        This form demonstrates how the widget's accessibility features
+        interact with form elements. Try enabling high contrast or focus
+        outline, then tab through the fields.
+      </p>
+
+      <form class="demo-form" onsubmit="event.preventDefault(); alert('Form submitted (demo only)');">
+        <fieldset>
+          <legend>Send a Message</legend>
+
+          <div class="form-group">
+            <label for="name">Full Name</label>
+            <input type="text" id="name" name="name" placeholder="Jane Doe" autocomplete="name">
+          </div>
+
+          <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email" placeholder="jane@example.com" autocomplete="email">
+          </div>
+
+          <div class="form-group">
+            <label for="subject">Subject</label>
+            <select id="subject" name="subject">
+              <option value="">-- Select a subject --</option>
+              <option value="general">General Inquiry</option>
+              <option value="feedback">Feedback</option>
+              <option value="support">Technical Support</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="message">Message</label>
+            <textarea id="message" name="message" placeholder="Write your message here..."></textarea>
+          </div>
+
+          <button type="submit" class="btn-submit">Send Message</button>
+        </fieldset>
+      </form>
+    </section>
+
+  </main>
+
+  <!-- ===== Footer ===== -->
+  <footer class="site-footer">
+    <div class="site-footer__inner">
+      <span>&copy; 2026 AccessiDemo. All rights reserved.</span>
+      <nav aria-label="Footer navigation">
+        <ul class="footer-links">
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Terms of Service</a></li>
+          <li><a href="#">Accessibility Statement</a></li>
+          <li><a href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+        </ul>
+      </nav>
+    </div>
+  </footer>
+
+  <!-- ===== Initialize the Accessibility Widget ===== -->
+  <script src="../dist/a11y-widget.umd.js"></script>
+  <script>
+    AccessibilityWidget.init({
+      defaultLanguage: 'en',
+      languages: { en: 'English', he: '\u05E2\u05D1\u05E8\u05D9\u05EA' },
+      onToggle: function (feature, isActive) {
+        console.log(feature + ': ' + isActive);
+      }
+    });
+  </script>
+
+</body>
+</html>

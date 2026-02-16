@@ -1,0 +1,1154 @@
+/**
+ * Main Widget module for the Accessibility Menu.
+ *
+ * Creates the full DOM structure, handles keyboard/mouse interaction,
+ * manages feature state and persistence, and exposes a public API for
+ * programmatic control.
+ *
+ * @module widget
+ */
+
+import { FEATURES, getFeature, applyFeature, resetAllFeatures } from './features.js';
+import { saveSettings, loadSettings, clearSettings, setStorageKey, getStorageKey } from './storage.js';
+import { getTranslation, getAvailableLanguages, isRTL } from './i18n.js';
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const WIDGET_CLASS = 'a11y-widget';
+const OPEN_MODIFIER = 'a11y-widget--open';
+const RTL_MODIFIER = 'a11y-widget--rtl';
+const ACTIVE_MODIFIER = 'a11y-widget__item--active';
+
+// ---------------------------------------------------------------------------
+// SVG icons used by the widget chrome (toggle button, close button, controls)
+// ---------------------------------------------------------------------------
+
+const TOGGLE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8a2 2 0 0 1 2 2c0 1.02-.38 1.53-1.15 2.15C12.1 12.78 12 13.28 12 14"/><circle cx="12" cy="17" r="0.5" fill="currentColor"/></svg>';
+
+const CLOSE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+
+const MINUS_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+
+const PLUS_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Safely create an element from an SVG string by parsing it with
+ * DOMParser and importing the resulting node.  This avoids innerHTML on
+ * live elements and is CSP-safe.
+ *
+ * @param {string} svgString
+ * @returns {SVGElement}
+ */
+function parseSVG(svgString) {
+  var parser = new DOMParser();
+  var doc = parser.parseFromString(svgString, 'image/svg+xml');
+  return document.importNode(doc.documentElement, true);
+}
+
+/**
+ * Create a DOM element with optional class name(s) and attributes.
+ *
+ * @param {string}  tag
+ * @param {string}  [className]
+ * @param {Record<string, string>} [attrs]
+ * @returns {HTMLElement}
+ */
+function createElement(tag, className, attrs) {
+  var el = document.createElement(tag);
+  if (className) {
+    el.className = className;
+  }
+  if (attrs) {
+    var keys = Object.keys(attrs);
+    for (var i = 0; i < keys.length; i++) {
+      el.setAttribute(keys[i], attrs[keys[i]]);
+    }
+  }
+  return el;
+}
+
+/**
+ * Derive the ordered list of unique groups from the FEATURES array,
+ * preserving definition order.
+ *
+ * @param {import('./features.js').FeatureDefinition[]} features
+ * @returns {string[]}
+ */
+function getGroups(features) {
+  var seen = {};
+  var groups = [];
+  for (var i = 0; i < features.length; i++) {
+    if (!seen[features[i].group]) {
+      seen[features[i].group] = true;
+      groups.push(features[i].group);
+    }
+  }
+  return groups;
+}
+
+/**
+ * Capitalise the first letter of a string.
+ *
+ * @param {string} str
+ * @returns {string}
+ */
+function capitalise(str) {
+  if (!str) {
+    return '';
+  }
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+// ---------------------------------------------------------------------------
+// Widget class
+// ---------------------------------------------------------------------------
+
+/**
+ * @class Widget
+ *
+ * Encapsulates the entire accessibility menu lifecycle: DOM creation,
+ * event binding, state management, i18n, and public API.
+ */
+function Widget(options) {
+  options = options || {};
+
+  // -- Configuration --------------------------------------------------------
+  this._language = options.defaultLanguage || 'en';
+  this._languages = options.languages || null;
+  this._onToggle = typeof options.onToggle === 'function' ? options.onToggle : null;
+  this._onOpenMenu = typeof options.onOpenMenu === 'function' ? options.onOpenMenu : null;
+  this._onCloseMenu = typeof options.onCloseMenu === 'function' ? options.onCloseMenu : null;
+  this._position = options.position || 'bottom-right';
+
+  // Determine which features are enabled
+  this._enabledFeatures = this._resolveEnabledFeatures(options.features);
+
+  // Save original storage key and override if provided
+  this._originalStorageKey = getStorageKey();
+  if (options.storageKey) {
+    setStorageKey(options.storageKey);
+  }
+
+  // -- State ----------------------------------------------------------------
+  this._settings = {};
+  this._isOpen = false;
+  this._destroyed = false;
+
+  // Save original document lang/dir so we can restore on destroy
+  this._originalLang = document.documentElement.getAttribute('lang');
+  this._originalDir = document.documentElement.getAttribute('dir');
+
+  // -- DOM refs (populated by _buildDOM) ------------------------------------
+  this._root = null;
+  this._toggleBtn = null;
+  this._panel = null;
+  this._closeBtn = null;
+  this._contentEl = null;
+  this._disclaimerEl = null;
+  this._resetBtn = null;
+  this._titleEl = null;
+  this._menuItems = [];       // ordered list of focusable menu items
+  this._itemElements = {};    // featureId -> item DOM element
+  this._rangeValueEls = {};   // featureId -> value display element
+  this._langButtons = {};     // langCode -> button element
+
+  // -- Bound event handlers (for clean removal) -----------------------------
+  this._handleDocumentClick = this._onDocumentClick.bind(this);
+  this._handleDocumentKeydown = this._onDocumentKeydown.bind(this);
+  this._handleToggleClick = this._onToggleClick.bind(this);
+  this._handleToggleKeydown = this._onToggleKeydown.bind(this);
+  this._handlePanelKeydown = this._onPanelKeydown.bind(this);
+  this._handlePanelClick = this._onPanelClick.bind(this);
+
+  // -- Initialise -----------------------------------------------------------
+  this._loadState();
+  this._buildDOM();
+  this._attachEvents();
+  this._applyAllFeatures();
+  this._applyLanguage(this._language);
+}
+
+// ---------------------------------------------------------------------------
+// Internal: Feature resolution
+// ---------------------------------------------------------------------------
+
+/**
+ * Determine which features are enabled based on the user-supplied options.
+ *
+ * When `options.features` is not provided, all features are enabled.
+ * When it is an object, only features whose key is truthy are enabled.
+ *
+ * @param {Object|undefined} featureOptions
+ * @returns {import('./features.js').FeatureDefinition[]}
+ */
+Widget.prototype._resolveEnabledFeatures = function (featureOptions) {
+  if (!featureOptions) {
+    return FEATURES.slice();
+  }
+
+  var result = [];
+  for (var i = 0; i < FEATURES.length; i++) {
+    var f = FEATURES[i];
+    if (featureOptions[f.id] !== false) {
+      result.push(f);
+    }
+  }
+  return result;
+};
+
+// ---------------------------------------------------------------------------
+// Internal: State management
+// ---------------------------------------------------------------------------
+
+/**
+ * Load persisted settings from localStorage and merge with defaults.
+ */
+Widget.prototype._loadState = function () {
+  // Start with defaults
+  var defaults = {};
+  for (var i = 0; i < this._enabledFeatures.length; i++) {
+    var f = this._enabledFeatures[i];
+    defaults[f.id] = f.default;
+  }
+
+  var saved = loadSettings();
+  if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
+    // Restore language if saved and valid
+    if (typeof saved._language === 'string' && saved._language.length > 0) {
+      this._language = saved._language;
+    }
+    // Merge saved feature values with type validation
+    for (var j = 0; j < this._enabledFeatures.length; j++) {
+      var feat = this._enabledFeatures[j];
+      var val = saved[feat.id];
+      if (val === undefined) {
+        continue;
+      }
+      if (feat.type === 'toggle' && typeof val === 'boolean') {
+        defaults[feat.id] = val;
+      } else if (feat.type === 'range' && typeof val === 'number' && val >= feat.min && val <= feat.max) {
+        defaults[feat.id] = val;
+      }
+    }
+  }
+
+  this._settings = defaults;
+};
+
+/**
+ * Persist current settings to localStorage.
+ */
+Widget.prototype._saveState = function () {
+  var toSave = {};
+  var keys = Object.keys(this._settings);
+  for (var i = 0; i < keys.length; i++) {
+    toSave[keys[i]] = this._settings[keys[i]];
+  }
+  toSave._language = this._language;
+  saveSettings(toSave);
+};
+
+/**
+ * Apply all currently-active features to the DOM.
+ */
+Widget.prototype._applyAllFeatures = function () {
+  for (var i = 0; i < this._enabledFeatures.length; i++) {
+    var f = this._enabledFeatures[i];
+    applyFeature(f.id, this._settings[f.id]);
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Internal: DOM construction
+// ---------------------------------------------------------------------------
+
+/**
+ * Build the complete widget DOM tree and append it to `document.body`.
+ */
+Widget.prototype._buildDOM = function () {
+  // Root container
+  this._root = createElement('div', WIDGET_CLASS);
+  this._root.setAttribute('data-position', this._position);
+
+  // --- Toggle button -------------------------------------------------------
+  this._toggleBtn = createElement('button', 'a11y-widget__toggle', {
+    'aria-haspopup': 'menu',
+    'aria-expanded': 'false',
+    'aria-label': this._t('menuTitle'),
+    'aria-controls': 'a11y-widget-panel',
+  });
+  this._toggleBtn.appendChild(parseSVG(TOGGLE_ICON_SVG));
+  this._root.appendChild(this._toggleBtn);
+
+  // --- Panel ---------------------------------------------------------------
+  this._panel = createElement('div', 'a11y-widget__panel', {
+    'id': 'a11y-widget-panel',
+    'role': 'menu',
+    'aria-label': this._t('menuTitle'),
+  });
+
+  // Header
+  var header = createElement('div', 'a11y-widget__header');
+
+  this._titleEl = createElement('span', 'a11y-widget__title');
+  this._titleEl.textContent = this._t('menuTitle');
+  header.appendChild(this._titleEl);
+
+  this._closeBtn = createElement('button', 'a11y-widget__close', {
+    'aria-label': this._t('closeMenu'),
+  });
+  this._closeBtn.appendChild(parseSVG(CLOSE_ICON_SVG));
+  header.appendChild(this._closeBtn);
+
+  this._panel.appendChild(header);
+
+  // Content wrapper
+  this._contentEl = createElement('div', 'a11y-widget__content');
+
+  // Language section
+  this._buildLanguageSection(this._contentEl);
+
+  // Feature sections, grouped
+  var groups = getGroups(this._enabledFeatures);
+  for (var g = 0; g < groups.length; g++) {
+    this._buildGroupSection(groups[g], this._contentEl);
+  }
+
+  this._panel.appendChild(this._contentEl);
+
+  // Footer
+  var footer = createElement('div', 'a11y-widget__footer');
+
+  this._disclaimerEl = createElement('p', 'a11y-widget__disclaimer');
+  this._disclaimerEl.textContent = this._t('disclaimer');
+  footer.appendChild(this._disclaimerEl);
+
+  this._resetBtn = createElement('button', 'a11y-widget__reset');
+  this._resetBtn.textContent = this._t('resetAll');
+  footer.appendChild(this._resetBtn);
+
+  this._panel.appendChild(footer);
+  this._root.appendChild(this._panel);
+
+  // Append to body
+  document.body.appendChild(this._root);
+};
+
+/**
+ * Build the language-switcher section.
+ *
+ * @param {HTMLElement} parent
+ */
+Widget.prototype._buildLanguageSection = function (parent) {
+  var section = createElement('div', 'a11y-widget__section');
+
+  var title = createElement('div', 'a11y-widget__section-title');
+  title.setAttribute('data-i18n', 'language');
+  title.textContent = this._t('language');
+  section.appendChild(title);
+
+  var item = createElement('div', 'a11y-widget__item', {
+    'role': 'menuitem',
+    'tabindex': '-1',
+  });
+
+  // Determine which languages to offer
+  var langs = this._languages
+    ? Object.keys(this._languages)
+    : getAvailableLanguages();
+
+  var langContainer = createElement('div', 'a11y-widget__lang-buttons');
+
+  for (var i = 0; i < langs.length; i++) {
+    var code = langs[i];
+    var label = this._languages ? this._languages[code] : code.toUpperCase();
+
+    var btn = createElement('button', 'a11y-widget__lang-btn', {
+      'data-lang': code,
+      'aria-label': label,
+      'type': 'button',
+    });
+    btn.textContent = label;
+
+    if (code === this._language) {
+      btn.classList.add('a11y-widget__lang-btn--active');
+      btn.setAttribute('aria-pressed', 'true');
+    } else {
+      btn.setAttribute('aria-pressed', 'false');
+    }
+
+    this._langButtons[code] = btn;
+    langContainer.appendChild(btn);
+  }
+
+  item.appendChild(langContainer);
+  section.appendChild(item);
+  this._menuItems.push(item);
+
+  parent.appendChild(section);
+};
+
+/**
+ * Build a grouped section of feature items.
+ *
+ * @param {string}      groupName
+ * @param {HTMLElement}  parent
+ */
+Widget.prototype._buildGroupSection = function (groupName, parent) {
+  var section = createElement('div', 'a11y-widget__section', {
+    'role': 'group',
+    'aria-label': capitalise(groupName),
+  });
+
+  var title = createElement('div', 'a11y-widget__section-title', {
+    'role': 'presentation',
+  });
+  title.textContent = capitalise(groupName);
+  section.appendChild(title);
+
+  var features = this._enabledFeatures.filter(function (f) {
+    return f.group === groupName;
+  });
+
+  for (var i = 0; i < features.length; i++) {
+    var f = features[i];
+    var item = this._buildFeatureItem(f);
+    section.appendChild(item);
+    this._menuItems.push(item);
+    this._itemElements[f.id] = item;
+  }
+
+  parent.appendChild(section);
+};
+
+/**
+ * Build a single feature menu item element.
+ *
+ * @param {import('./features.js').FeatureDefinition} feature
+ * @returns {HTMLElement}
+ */
+Widget.prototype._buildFeatureItem = function (feature) {
+  var isRange = feature.type === 'range';
+  var currentValue = this._settings[feature.id];
+
+  var item = createElement('div', 'a11y-widget__item', {
+    'role': isRange ? 'menuitem' : 'menuitemcheckbox',
+    'tabindex': '-1',
+    'data-feature': feature.id,
+  });
+
+  if (!isRange) {
+    item.setAttribute('aria-checked', currentValue ? 'true' : 'false');
+    if (currentValue) {
+      item.classList.add(ACTIVE_MODIFIER);
+    }
+  }
+
+  // Icon
+  var iconSpan = createElement('span', 'a11y-widget__item-icon');
+  iconSpan.appendChild(parseSVG(feature.icon));
+  item.appendChild(iconSpan);
+
+  // Label
+  var labelSpan = createElement('span', 'a11y-widget__item-label');
+  labelSpan.setAttribute('data-i18n', feature.id);
+  labelSpan.textContent = this._t(feature.id);
+  item.appendChild(labelSpan);
+
+  if (isRange) {
+    // Font-size controls
+    var controls = createElement('div', 'a11y-widget__font-controls');
+
+    var minusBtn = createElement('button', 'a11y-widget__font-btn', {
+      'data-action': 'decrease',
+      'data-feature': feature.id,
+      'aria-label': this._t('decreaseFontSize'),
+      'type': 'button',
+    });
+    minusBtn.appendChild(parseSVG(MINUS_ICON_SVG));
+
+    var valueSpan = createElement('span', 'a11y-widget__font-value');
+    valueSpan.textContent = String(currentValue);
+    valueSpan.setAttribute('aria-live', 'polite');
+    this._rangeValueEls[feature.id] = valueSpan;
+
+    var plusBtn = createElement('button', 'a11y-widget__font-btn', {
+      'data-action': 'increase',
+      'data-feature': feature.id,
+      'aria-label': this._t('increaseFontSize'),
+      'type': 'button',
+    });
+    plusBtn.appendChild(parseSVG(PLUS_ICON_SVG));
+
+    controls.appendChild(minusBtn);
+    controls.appendChild(valueSpan);
+    controls.appendChild(plusBtn);
+
+    item.appendChild(controls);
+  } else {
+    // Toggle indicator
+    var toggleIndicator = createElement('span', 'a11y-widget__item-toggle', {
+      'aria-hidden': 'true',
+    });
+    item.appendChild(toggleIndicator);
+  }
+
+  return item;
+};
+
+// ---------------------------------------------------------------------------
+// Internal: Event binding
+// ---------------------------------------------------------------------------
+
+/**
+ * Attach all event listeners.
+ */
+Widget.prototype._attachEvents = function () {
+  // Toggle button
+  this._toggleBtn.addEventListener('click', this._handleToggleClick);
+  this._toggleBtn.addEventListener('keydown', this._handleToggleKeydown);
+
+  // Panel (delegated clicks and keyboard nav)
+  this._panel.addEventListener('click', this._handlePanelClick);
+  this._panel.addEventListener('keydown', this._handlePanelKeydown);
+
+  // Document-level: close on outside click and Escape
+  document.addEventListener('click', this._handleDocumentClick);
+  document.addEventListener('keydown', this._handleDocumentKeydown);
+};
+
+/**
+ * Detach all event listeners.
+ */
+Widget.prototype._detachEvents = function () {
+  this._toggleBtn.removeEventListener('click', this._handleToggleClick);
+  this._toggleBtn.removeEventListener('keydown', this._handleToggleKeydown);
+  this._panel.removeEventListener('click', this._handlePanelClick);
+  this._panel.removeEventListener('keydown', this._handlePanelKeydown);
+  document.removeEventListener('click', this._handleDocumentClick);
+  document.removeEventListener('keydown', this._handleDocumentKeydown);
+};
+
+// ---------------------------------------------------------------------------
+// Internal: Event handlers
+// ---------------------------------------------------------------------------
+
+/**
+ * Handle click on the toggle button.
+ *
+ * @param {MouseEvent} e
+ */
+Widget.prototype._onToggleClick = function (e) {
+  e.stopPropagation();
+  this.toggleMenu();
+};
+
+/**
+ * Handle keydown on the toggle button.
+ * Enter/Space open the menu; Down arrow also opens it.
+ *
+ * @param {KeyboardEvent} e
+ */
+Widget.prototype._onToggleKeydown = function (e) {
+  switch (e.key) {
+  case 'Enter':
+  case ' ':
+    e.preventDefault();
+    this.toggleMenu();
+    break;
+  case 'ArrowDown':
+    e.preventDefault();
+    this.openMenu();
+    break;
+  }
+};
+
+/**
+ * Handle delegated clicks inside the panel.
+ *
+ * @param {MouseEvent} e
+ */
+Widget.prototype._onPanelClick = function (e) {
+  e.stopPropagation();
+  var target = e.target;
+
+  // Close button
+  if (target === this._closeBtn || this._closeBtn.contains(target)) {
+    this.closeMenu();
+    this._toggleBtn.focus();
+    return;
+  }
+
+  // Reset button
+  if (target === this._resetBtn || this._resetBtn.contains(target)) {
+    this.resetAll();
+    return;
+  }
+
+  // Language button
+  var langBtn = this._findAncestorWithClass(target, 'a11y-widget__lang-btn');
+  if (langBtn) {
+    var langCode = langBtn.getAttribute('data-lang');
+    if (langCode) {
+      this.setLanguage(langCode);
+    }
+    return;
+  }
+
+  // Font size +/- buttons
+  var fontBtn = this._findAncestorWithClass(target, 'a11y-widget__font-btn');
+  if (fontBtn) {
+    var action = fontBtn.getAttribute('data-action');
+    var featureId = fontBtn.getAttribute('data-feature');
+    if (action && featureId) {
+      this._adjustRange(featureId, action);
+    }
+    return;
+  }
+
+  // Feature item (toggle)
+  var item = this._findAncestorWithAttr(target, 'data-feature');
+  if (item) {
+    var fId = item.getAttribute('data-feature');
+    var feature = getFeature(fId);
+    if (feature && feature.type === 'toggle') {
+      this._toggleFeature(fId);
+    }
+  }
+};
+
+/**
+ * Handle keyboard navigation inside the panel.
+ *
+ * @param {KeyboardEvent} e
+ */
+Widget.prototype._onPanelKeydown = function (e) {
+  var currentIndex = this._getFocusedItemIndex();
+
+  switch (e.key) {
+  case 'ArrowDown':
+    e.preventDefault();
+    this._focusItem(currentIndex + 1);
+    break;
+  case 'ArrowUp':
+    e.preventDefault();
+    this._focusItem(currentIndex - 1);
+    break;
+  case 'Home':
+    e.preventDefault();
+    this._focusItem(0);
+    break;
+  case 'End':
+    e.preventDefault();
+    this._focusItem(this._menuItems.length - 1);
+    break;
+  case 'Enter':
+  case ' ':
+    e.preventDefault();
+    this._activateCurrentItem(e.target);
+    break;
+  case 'Escape':
+    e.preventDefault();
+    e.stopPropagation();
+    this.closeMenu();
+    this._toggleBtn.focus();
+    break;
+  case 'Tab':
+    // Tab out of menu closes it
+    this.closeMenu();
+    break;
+  }
+};
+
+/**
+ * Close menu when clicking outside the widget.
+ *
+ * @param {MouseEvent} e
+ */
+Widget.prototype._onDocumentClick = function (e) {
+  if (this._destroyed) {
+    return;
+  }
+  if (this._isOpen && !this._root.contains(e.target)) {
+    this.closeMenu();
+  }
+};
+
+/**
+ * Close menu on Escape from anywhere in the document.
+ *
+ * @param {KeyboardEvent} e
+ */
+Widget.prototype._onDocumentKeydown = function (e) {
+  if (this._destroyed) {
+    return;
+  }
+  if (e.key === 'Escape' && this._isOpen) {
+    this.closeMenu();
+    this._toggleBtn.focus();
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Internal: Focus management
+// ---------------------------------------------------------------------------
+
+/**
+ * Return the index of the currently focused menu item, or -1.
+ *
+ * @returns {number}
+ */
+Widget.prototype._getFocusedItemIndex = function () {
+  var active = document.activeElement;
+  for (var i = 0; i < this._menuItems.length; i++) {
+    if (this._menuItems[i] === active || this._menuItems[i].contains(active)) {
+      return i;
+    }
+  }
+  return -1;
+};
+
+/**
+ * Move focus to the menu item at the given index, wrapping around at
+ * boundaries.
+ *
+ * @param {number} index
+ */
+Widget.prototype._focusItem = function (index) {
+  if (this._menuItems.length === 0) {
+    return;
+  }
+  if (index < 0) {
+    index = this._menuItems.length - 1;
+  }
+  if (index >= this._menuItems.length) {
+    index = 0;
+  }
+  this._menuItems[index].focus();
+};
+
+/**
+ * Activate the item that currently has focus (Enter/Space handler).
+ *
+ * @param {HTMLElement} target
+ */
+Widget.prototype._activateCurrentItem = function (target) {
+  // Check if target is inside a font control button
+  var fontBtn = this._findAncestorWithClass(target, 'a11y-widget__font-btn');
+  if (fontBtn) {
+    var action = fontBtn.getAttribute('data-action');
+    var featureId = fontBtn.getAttribute('data-feature');
+    if (action && featureId) {
+      this._adjustRange(featureId, action);
+    }
+    return;
+  }
+
+  // Check if target is a language button
+  var langBtn = this._findAncestorWithClass(target, 'a11y-widget__lang-btn');
+  if (langBtn) {
+    var langCode = langBtn.getAttribute('data-lang');
+    if (langCode) {
+      this.setLanguage(langCode);
+    }
+    return;
+  }
+
+  // Otherwise find the closest item with data-feature
+  var item = this._findAncestorWithAttr(target, 'data-feature');
+  if (!item) {
+    // Maybe the target IS a menu item (language row)
+    var idx = this._getFocusedItemIndex();
+    if (idx >= 0) {
+      item = this._menuItems[idx];
+    }
+  }
+
+  if (item) {
+    var fId = item.getAttribute('data-feature');
+    if (fId) {
+      var feature = getFeature(fId);
+      if (feature && feature.type === 'toggle') {
+        this._toggleFeature(fId);
+      }
+    }
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Internal: DOM traversal helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Walk up the DOM from `el` looking for an ancestor (or self) with the
+ * specified class name.  Stops at the panel boundary.
+ *
+ * @param {HTMLElement} el
+ * @param {string} className
+ * @returns {HTMLElement|null}
+ */
+Widget.prototype._findAncestorWithClass = function (el, className) {
+  while (el && el !== this._panel) {
+    if (el.classList && el.classList.contains(className)) {
+      return el;
+    }
+    el = el.parentElement;
+  }
+  return null;
+};
+
+/**
+ * Walk up the DOM from `el` looking for an ancestor (or self) with the
+ * specified attribute.  Stops at the panel boundary.
+ *
+ * @param {HTMLElement} el
+ * @param {string} attrName
+ * @returns {HTMLElement|null}
+ */
+Widget.prototype._findAncestorWithAttr = function (el, attrName) {
+  while (el && el !== this._panel) {
+    if (el.hasAttribute && el.hasAttribute(attrName)) {
+      return el;
+    }
+    el = el.parentElement;
+  }
+  return null;
+};
+
+// ---------------------------------------------------------------------------
+// Internal: Feature toggling
+// ---------------------------------------------------------------------------
+
+/**
+ * Toggle a boolean feature on/off and update state + DOM.
+ *
+ * @param {string} featureId
+ */
+Widget.prototype._toggleFeature = function (featureId) {
+  var current = !!this._settings[featureId];
+  var newValue = !current;
+  this._settings[featureId] = newValue;
+
+  applyFeature(featureId, newValue);
+  this._updateItemState(featureId, newValue);
+  this._saveState();
+
+  if (this._onToggle) {
+    this._onToggle(featureId, newValue);
+  }
+};
+
+/**
+ * Adjust a range feature (increment or decrement).
+ *
+ * @param {string} featureId
+ * @param {'increase'|'decrease'} action
+ */
+Widget.prototype._adjustRange = function (featureId, action) {
+  var feature = getFeature(featureId);
+  if (!feature || feature.type !== 'range') {
+    return;
+  }
+
+  var current = Number(this._settings[featureId]) || 0;
+  var next;
+
+  if (action === 'increase') {
+    next = Math.min(current + feature.step, feature.max);
+  } else {
+    next = Math.max(current - feature.step, feature.min);
+  }
+
+  if (next === current) {
+    return;
+  }
+
+  this._settings[featureId] = next;
+  applyFeature(featureId, next);
+
+  // Update the displayed value
+  var valueEl = this._rangeValueEls[featureId];
+  if (valueEl) {
+    valueEl.textContent = String(next);
+  }
+
+  this._saveState();
+
+  if (this._onToggle) {
+    this._onToggle(featureId, next);
+  }
+};
+
+/**
+ * Update the visual state of a toggle item element.
+ *
+ * @param {string}  featureId
+ * @param {boolean} isActive
+ */
+Widget.prototype._updateItemState = function (featureId, isActive) {
+  var item = this._itemElements[featureId];
+  if (!item) {
+    return;
+  }
+  item.setAttribute('aria-checked', isActive ? 'true' : 'false');
+  if (isActive) {
+    item.classList.add(ACTIVE_MODIFIER);
+  } else {
+    item.classList.remove(ACTIVE_MODIFIER);
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Internal: i18n helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Shorthand for `getTranslation(this._language, key)`.
+ *
+ * @param {string} key
+ * @returns {string}
+ */
+Widget.prototype._t = function (key) {
+  return getTranslation(this._language, key);
+};
+
+/**
+ * Apply the current language to all text nodes in the widget DOM.
+ *
+ * @param {string} lang
+ */
+Widget.prototype._applyLanguage = function (lang) {
+  var rtl = isRTL(lang);
+
+  // Update document-level attributes
+  document.documentElement.setAttribute('lang', lang);
+  document.documentElement.setAttribute('dir', rtl ? 'rtl' : 'ltr');
+
+  // Update widget RTL modifier
+  if (rtl) {
+    this._root.classList.add(RTL_MODIFIER);
+  } else {
+    this._root.classList.remove(RTL_MODIFIER);
+  }
+
+  // Update text content
+  this._titleEl.textContent = this._t('menuTitle');
+  this._toggleBtn.setAttribute('aria-label', this._t('menuTitle'));
+  this._panel.setAttribute('aria-label', this._t('menuTitle'));
+  this._closeBtn.setAttribute('aria-label', this._t('closeMenu'));
+  this._disclaimerEl.textContent = this._t('disclaimer');
+  this._resetBtn.textContent = this._t('resetAll');
+
+  // Update all elements with data-i18n attribute
+  var i18nElements = this._root.querySelectorAll('[data-i18n]');
+  for (var i = 0; i < i18nElements.length; i++) {
+    var el = i18nElements[i];
+    var key = el.getAttribute('data-i18n');
+    el.textContent = this._t(key);
+  }
+
+  // Update font control labels
+  var decreaseBtns = this._root.querySelectorAll('[data-action="decrease"]');
+  for (var d = 0; d < decreaseBtns.length; d++) {
+    decreaseBtns[d].setAttribute('aria-label', this._t('decreaseFontSize'));
+  }
+  var increaseBtns = this._root.querySelectorAll('[data-action="increase"]');
+  for (var u = 0; u < increaseBtns.length; u++) {
+    increaseBtns[u].setAttribute('aria-label', this._t('increaseFontSize'));
+  }
+
+  // Update language button active states
+  var codes = Object.keys(this._langButtons);
+  for (var j = 0; j < codes.length; j++) {
+    var code = codes[j];
+    var btn = this._langButtons[code];
+    if (code === lang) {
+      btn.classList.add('a11y-widget__lang-btn--active');
+      btn.setAttribute('aria-pressed', 'true');
+    } else {
+      btn.classList.remove('a11y-widget__lang-btn--active');
+      btn.setAttribute('aria-pressed', 'false');
+    }
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Public API: Menu control
+// ---------------------------------------------------------------------------
+
+/**
+ * Open the accessibility menu panel and move focus to the first item.
+ */
+Widget.prototype.openMenu = function () {
+  if (this._isOpen || this._destroyed) {
+    return;
+  }
+  this._isOpen = true;
+  this._root.classList.add(OPEN_MODIFIER);
+  this._toggleBtn.setAttribute('aria-expanded', 'true');
+
+  // Focus the first menu item
+  if (this._menuItems.length > 0) {
+    this._menuItems[0].focus();
+  }
+
+  if (this._onOpenMenu) {
+    this._onOpenMenu();
+  }
+};
+
+/**
+ * Close the accessibility menu panel.
+ */
+Widget.prototype.closeMenu = function () {
+  if (!this._isOpen || this._destroyed) {
+    return;
+  }
+  this._isOpen = false;
+  this._root.classList.remove(OPEN_MODIFIER);
+  this._toggleBtn.setAttribute('aria-expanded', 'false');
+
+  if (this._onCloseMenu) {
+    this._onCloseMenu();
+  }
+};
+
+/**
+ * Toggle the menu open/closed.
+ */
+Widget.prototype.toggleMenu = function () {
+  if (this._isOpen) {
+    this.closeMenu();
+  } else {
+    this.openMenu();
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Public API: Settings
+// ---------------------------------------------------------------------------
+
+/**
+ * Return a shallow copy of the current settings object.
+ *
+ * @returns {Record<string, *>}
+ */
+Widget.prototype.getSettings = function () {
+  var copy = {};
+  var keys = Object.keys(this._settings);
+  for (var i = 0; i < keys.length; i++) {
+    copy[keys[i]] = this._settings[keys[i]];
+  }
+  return copy;
+};
+
+/**
+ * Reset all features to their defaults, clear persisted settings, and
+ * update the UI.
+ */
+Widget.prototype.resetAll = function () {
+  // Reset all body classes
+  resetAllFeatures();
+
+  // Reset state to defaults
+  for (var i = 0; i < this._enabledFeatures.length; i++) {
+    var f = this._enabledFeatures[i];
+    this._settings[f.id] = f.default;
+
+    // Update item DOM
+    if (f.type === 'toggle') {
+      this._updateItemState(f.id, false);
+    }
+  }
+
+  // Reset range value displays
+  var rangeKeys = Object.keys(this._rangeValueEls);
+  for (var j = 0; j < rangeKeys.length; j++) {
+    var rFeature = getFeature(rangeKeys[j]);
+    this._rangeValueEls[rangeKeys[j]].textContent = String(rFeature ? rFeature.default : 0);
+  }
+
+  // Clear storage
+  clearSettings();
+};
+
+// ---------------------------------------------------------------------------
+// Public API: Language
+// ---------------------------------------------------------------------------
+
+/**
+ * Switch the widget and document language.
+ *
+ * @param {string} code - BCP-47 language code (e.g. "en", "he").
+ */
+Widget.prototype.setLanguage = function (code) {
+  if (code === this._language) {
+    return;
+  }
+  this._language = code;
+  this._applyLanguage(code);
+  this._saveState();
+};
+
+// ---------------------------------------------------------------------------
+// Public API: Lifecycle
+// ---------------------------------------------------------------------------
+
+/**
+ * Remove the widget from the DOM and clean up all event listeners.
+ * After calling `destroy()`, the instance should not be reused.
+ */
+Widget.prototype.destroy = function () {
+  if (this._destroyed) {
+    return;
+  }
+  this._destroyed = true;
+  this._detachEvents();
+
+  // Remove all feature classes from document.body
+  resetAllFeatures();
+
+  // Restore original storage key
+  if (this._originalStorageKey) {
+    setStorageKey(this._originalStorageKey);
+  }
+
+  // Restore original document lang/dir
+  if (this._originalLang !== null) {
+    document.documentElement.setAttribute('lang', this._originalLang);
+  } else {
+    document.documentElement.removeAttribute('lang');
+  }
+  if (this._originalDir !== null) {
+    document.documentElement.setAttribute('dir', this._originalDir);
+  } else {
+    document.documentElement.removeAttribute('dir');
+  }
+
+  // Remove the DOM node
+  if (this._root && this._root.parentNode) {
+    this._root.parentNode.removeChild(this._root);
+  }
+
+  // Null out references
+  this._root = null;
+  this._toggleBtn = null;
+  this._panel = null;
+  this._closeBtn = null;
+  this._contentEl = null;
+  this._disclaimerEl = null;
+  this._resetBtn = null;
+  this._titleEl = null;
+  this._menuItems = [];
+  this._itemElements = {};
+  this._rangeValueEls = {};
+  this._langButtons = {};
+};
+
+export default Widget;
