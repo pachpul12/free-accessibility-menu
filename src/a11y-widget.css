@@ -816,6 +816,33 @@ body.a11y-invert-colors .a11y-widget {
 }
 
 /* --------------------------------------------------------------------------
+   Reading Guide
+   -------------------------------------------------------------------------- */
+
+.a11y-reading-guide-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 12px;
+  background-color: rgba(26, 115, 232, 0.3);
+  border-top: 2px solid rgba(26, 115, 232, 0.6);
+  border-bottom: 2px solid rgba(26, 115, 232, 0.6);
+  pointer-events: none;
+  z-index: 999998;
+  transition: top 0.05s linear;
+}
+
+/* --------------------------------------------------------------------------
+   Text-to-Speech active highlight
+   -------------------------------------------------------------------------- */
+
+.a11y-tts-speaking {
+  outline: 2px solid #1a73e8 !important;
+  outline-offset: 2px !important;
+  background-color: rgba(26, 115, 232, 0.08) !important;
+}
+
+/* --------------------------------------------------------------------------
    Font Size Scaling (body.a11y-font-1 through body.a11y-font-5)
    -------------------------------------------------------------------------- */
 

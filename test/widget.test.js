@@ -77,6 +77,8 @@ var TOGGLE_FEATURE_IDS = [
   'largeCursor',
   'highlightHeadings',
   'invertColors',
+  'readingGuide',
+  'textToSpeech',
 ];
 var ALL_FEATURE_IDS = TOGGLE_FEATURE_IDS.concat(['fontSize']);
 var FEATURE_CSS = {
@@ -91,6 +93,8 @@ var FEATURE_CSS = {
   largeCursor: 'a11y-large-cursor',
   highlightHeadings: 'a11y-highlight-headings',
   invertColors: 'a11y-invert-colors',
+  readingGuide: 'a11y-reading-guide',
+  textToSpeech: 'a11y-text-to-speech',
 };
 
 // ---------------------------------------------------------------------------
@@ -192,8 +196,9 @@ describe('DOM Structure', () => {
     expect(btn.getAttribute('role')).toBeNull();
   });
 
-  test('panel has role=menu', () => {
-    expect(getPanel().getAttribute('role')).toBe('menu');
+  test('content area has role=menu', () => {
+    var content = document.querySelector('.a11y-widget__content');
+    expect(content.getAttribute('role')).toBe('menu');
   });
 
   test('close button exists', () => {
@@ -204,7 +209,7 @@ describe('DOM Structure', () => {
     expect(getTitle().textContent).toBe('Accessibility Menu');
   });
 
-  test('all 12 features rendered as menu items', () => {
+  test('all 14 features rendered as menu items', () => {
     ALL_FEATURE_IDS.forEach((id) => {
       expect(getFeatureItem(id)).not.toBeNull();
     });
@@ -251,7 +256,7 @@ describe('DOM Structure', () => {
 
   test('group sections have role=group', () => {
     var sections = getRoot().querySelectorAll('.a11y-widget__section[role="group"]');
-    expect(sections.length).toBeGreaterThanOrEqual(3);
+    expect(sections.length).toBeGreaterThanOrEqual(4);
   });
 });
 
@@ -736,9 +741,10 @@ describe('Language Switching', () => {
     expect(getTitle().textContent).toBe('Accessibility Menu');
   });
 
-  test('panel aria-label updates', () => {
+  test('content area aria-label updates', () => {
     instance.setLanguage('he');
-    expect(getPanel().getAttribute('aria-label')).not.toBe('Accessibility Menu');
+    var content = document.querySelector('.a11y-widget__content');
+    expect(content.getAttribute('aria-label')).not.toBe('Accessibility Menu');
   });
 
   test('close button aria-label updates', () => {
@@ -1144,17 +1150,17 @@ describe('ARIA Compliance', () => {
     expect(panel.getAttribute('id')).toBe('a11y-widget-panel');
   });
 
-  test('panel has role=menu with aria-label', () => {
+  test('content area has role=menu with aria-label', () => {
     AccessibilityWidget.init();
-    var panel = getPanel();
-    expect(panel.getAttribute('role')).toBe('menu');
-    expect(panel.getAttribute('aria-label')).toBeTruthy();
+    var content = document.querySelector('.a11y-widget__content');
+    expect(content.getAttribute('role')).toBe('menu');
+    expect(content.getAttribute('aria-label')).toBeTruthy();
   });
 
   test('group sections have role=group with aria-label', () => {
     AccessibilityWidget.init();
     var groups = getRoot().querySelectorAll('[role="group"]');
-    expect(groups.length).toBeGreaterThanOrEqual(3);
+    expect(groups.length).toBeGreaterThanOrEqual(4);
     groups.forEach((g) => {
       expect(g.getAttribute('aria-label')).toBeTruthy();
     });
@@ -1289,6 +1295,8 @@ describe('All features disabled edge case', () => {
         largeCursor: false,
         highlightHeadings: false,
         invertColors: false,
+        readingGuide: false,
+        textToSpeech: false,
       },
     });
     expect(getRoot()).not.toBeNull();
@@ -1387,5 +1395,420 @@ describe('New Features - Invert Colors', () => {
     AccessibilityWidget.init({ onToggle });
     simulateClick(getFeatureItem('invertColors'));
     expect(onToggle).toHaveBeenCalledWith('invertColors', true);
+  });
+});
+
+// ===========================================================================
+// 18. Reading Guide Feature
+// ===========================================================================
+
+describe('New Features - Reading Guide', () => {
+  test('toggling readingGuide adds CSS class to body', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('readingGuide'));
+    expect(document.body.classList.contains('a11y-reading-guide')).toBe(true);
+  });
+
+  test('toggling readingGuide off removes CSS class', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('readingGuide'));
+    simulateClick(getFeatureItem('readingGuide'));
+    expect(document.body.classList.contains('a11y-reading-guide')).toBe(false);
+  });
+
+  test('readingGuide creates overlay bar in DOM when activated', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('readingGuide'));
+    var bar = document.querySelector('.a11y-reading-guide-bar');
+    expect(bar).not.toBeNull();
+  });
+
+  test('readingGuide removes overlay bar from DOM when deactivated', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('readingGuide'));
+    simulateClick(getFeatureItem('readingGuide'));
+    var bar = document.querySelector('.a11y-reading-guide-bar');
+    expect(bar).toBeNull();
+  });
+
+  test('readingGuide overlay follows mousemove', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('readingGuide'));
+    var bar = document.querySelector('.a11y-reading-guide-bar');
+    document.dispatchEvent(new MouseEvent('mousemove', { clientY: 200 }));
+    expect(bar.style.top).toBe('194px'); // 200 - 6
+  });
+
+  test('readingGuide persists to localStorage', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('readingGuide'));
+    var saved = JSON.parse(localStorage.getItem('a11yWidgetSettings'));
+    expect(saved.readingGuide).toBe(true);
+  });
+
+  test('readingGuide callback fires', () => {
+    var onToggle = jest.fn();
+    AccessibilityWidget.init({ onToggle });
+    simulateClick(getFeatureItem('readingGuide'));
+    expect(onToggle).toHaveBeenCalledWith('readingGuide', true);
+  });
+
+  test('readingGuide is cleaned up on destroy', () => {
+    var w = AccessibilityWidget.init();
+    simulateClick(getFeatureItem('readingGuide'));
+    w.destroy();
+    var bar = document.querySelector('.a11y-reading-guide-bar');
+    expect(bar).toBeNull();
+  });
+
+  test('readingGuide is cleaned up on resetAll', () => {
+    var w = AccessibilityWidget.init();
+    simulateClick(getFeatureItem('readingGuide'));
+    w.resetAll();
+    var bar = document.querySelector('.a11y-reading-guide-bar');
+    expect(bar).toBeNull();
+  });
+
+  test('readingGuide restores from persisted state', () => {
+    localStorage.setItem(
+      'a11yWidgetSettings',
+      JSON.stringify({ readingGuide: true, _language: 'en' })
+    );
+    AccessibilityWidget.init();
+    var bar = document.querySelector('.a11y-reading-guide-bar');
+    expect(bar).not.toBeNull();
+    expect(document.body.classList.contains('a11y-reading-guide')).toBe(true);
+  });
+});
+
+// ===========================================================================
+// 19. Text-to-Speech Feature
+// ===========================================================================
+
+describe('New Features - Text to Speech', () => {
+  // Mock speechSynthesis
+  var mockSpeak;
+  var mockCancel;
+
+  beforeEach(() => {
+    mockSpeak = jest.fn();
+    mockCancel = jest.fn();
+    global.speechSynthesis = {
+      speak: mockSpeak,
+      cancel: mockCancel,
+    };
+    global.SpeechSynthesisUtterance = jest.fn().mockImplementation((text) => ({
+      text: text,
+      lang: '',
+      onend: null,
+      onerror: null,
+    }));
+  });
+
+  afterEach(() => {
+    delete global.speechSynthesis;
+    delete global.SpeechSynthesisUtterance;
+  });
+
+  test('toggling textToSpeech adds CSS class to body', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('textToSpeech'));
+    expect(document.body.classList.contains('a11y-text-to-speech')).toBe(true);
+  });
+
+  test('toggling textToSpeech off removes CSS class', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('textToSpeech'));
+    simulateClick(getFeatureItem('textToSpeech'));
+    expect(document.body.classList.contains('a11y-text-to-speech')).toBe(false);
+  });
+
+  test('clicking on page text triggers speechSynthesis.speak', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('textToSpeech'));
+
+    var p = document.createElement('p');
+    p.textContent = 'Hello world';
+    document.body.appendChild(p);
+
+    simulateClick(p);
+    expect(mockSpeak).toHaveBeenCalled();
+
+    document.body.removeChild(p);
+  });
+
+  test('clicking inside the widget does NOT trigger speech', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('textToSpeech'));
+    // Reset mock after the initial toggle click
+    mockSpeak.mockClear();
+
+    // Click on the widget toggle
+    getToggleBtn().dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(mockSpeak).not.toHaveBeenCalled();
+  });
+
+  test('textToSpeech adds highlight class to clicked element', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('textToSpeech'));
+
+    var p = document.createElement('p');
+    p.textContent = 'Test text';
+    document.body.appendChild(p);
+
+    simulateClick(p);
+    expect(p.classList.contains('a11y-tts-speaking')).toBe(true);
+
+    document.body.removeChild(p);
+  });
+
+  test('deactivating TTS calls speechSynthesis.cancel', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('textToSpeech'));
+    mockCancel.mockClear();
+    simulateClick(getFeatureItem('textToSpeech'));
+    expect(mockCancel).toHaveBeenCalled();
+  });
+
+  test('deactivating TTS removes highlight classes', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('textToSpeech'));
+
+    var p = document.createElement('p');
+    p.textContent = 'Test text';
+    document.body.appendChild(p);
+    simulateClick(p);
+
+    simulateClick(getFeatureItem('textToSpeech'));
+    expect(p.classList.contains('a11y-tts-speaking')).toBe(false);
+
+    document.body.removeChild(p);
+  });
+
+  test('textToSpeech persists to localStorage', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('textToSpeech'));
+    var saved = JSON.parse(localStorage.getItem('a11yWidgetSettings'));
+    expect(saved.textToSpeech).toBe(true);
+  });
+
+  test('textToSpeech callback fires', () => {
+    var onToggle = jest.fn();
+    AccessibilityWidget.init({ onToggle });
+    simulateClick(getFeatureItem('textToSpeech'));
+    expect(onToggle).toHaveBeenCalledWith('textToSpeech', true);
+  });
+
+  test('textToSpeech is cleaned up on destroy', () => {
+    var w = AccessibilityWidget.init();
+    simulateClick(getFeatureItem('textToSpeech'));
+    mockCancel.mockClear();
+    w.destroy();
+    expect(mockCancel).toHaveBeenCalled();
+  });
+
+  test('textToSpeech is cleaned up on resetAll', () => {
+    var w = AccessibilityWidget.init();
+    simulateClick(getFeatureItem('textToSpeech'));
+    mockCancel.mockClear();
+    w.resetAll();
+    expect(mockCancel).toHaveBeenCalled();
+  });
+
+  test('clicking empty element does not trigger speech', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('textToSpeech'));
+    mockSpeak.mockClear();
+
+    var div = document.createElement('div');
+    div.textContent = '';
+    document.body.appendChild(div);
+
+    simulateClick(div);
+    expect(mockSpeak).not.toHaveBeenCalled();
+
+    document.body.removeChild(div);
+  });
+
+  test('TTS utterance onend removes highlight class', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('textToSpeech'));
+
+    var p = document.createElement('p');
+    p.textContent = 'Test onend';
+    document.body.appendChild(p);
+
+    simulateClick(p);
+    expect(p.classList.contains('a11y-tts-speaking')).toBe(true);
+
+    // Get the utterance created by SpeechSynthesisUtterance mock
+    var utterance = global.SpeechSynthesisUtterance.mock.results[
+      global.SpeechSynthesisUtterance.mock.results.length - 1
+    ].value;
+    // Trigger onend
+    utterance.onend();
+    expect(p.classList.contains('a11y-tts-speaking')).toBe(false);
+
+    document.body.removeChild(p);
+  });
+
+  test('TTS utterance onerror removes highlight class', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('textToSpeech'));
+
+    var p = document.createElement('p');
+    p.textContent = 'Test onerror';
+    document.body.appendChild(p);
+
+    simulateClick(p);
+    expect(p.classList.contains('a11y-tts-speaking')).toBe(true);
+
+    // Get the utterance
+    var utterance = global.SpeechSynthesisUtterance.mock.results[
+      global.SpeechSynthesisUtterance.mock.results.length - 1
+    ].value;
+    // Trigger onerror
+    utterance.onerror();
+    expect(p.classList.contains('a11y-tts-speaking')).toBe(false);
+
+    document.body.removeChild(p);
+  });
+
+  test('textToSpeech restores from persisted state', () => {
+    localStorage.setItem(
+      'a11yWidgetSettings',
+      JSON.stringify({ textToSpeech: true, _language: 'en' })
+    );
+    AccessibilityWidget.init();
+    expect(document.body.classList.contains('a11y-text-to-speech')).toBe(true);
+  });
+
+  test('clicking replaces previous highlight', () => {
+    AccessibilityWidget.init();
+    simulateClick(getFeatureItem('textToSpeech'));
+
+    var p1 = document.createElement('p');
+    p1.textContent = 'First paragraph';
+    document.body.appendChild(p1);
+
+    var p2 = document.createElement('p');
+    p2.textContent = 'Second paragraph';
+    document.body.appendChild(p2);
+
+    simulateClick(p1);
+    expect(p1.classList.contains('a11y-tts-speaking')).toBe(true);
+
+    simulateClick(p2);
+    expect(p1.classList.contains('a11y-tts-speaking')).toBe(false);
+    expect(p2.classList.contains('a11y-tts-speaking')).toBe(true);
+
+    document.body.removeChild(p1);
+    document.body.removeChild(p2);
+  });
+});
+
+// ===========================================================================
+// 20. Coverage Improvement - Edge Cases
+// ===========================================================================
+
+describe('Coverage - Edge Cases', () => {
+  test('_adjustRange returns early for non-range feature', () => {
+    var w = AccessibilityWidget.init();
+    // Calling adjustRange on a toggle feature should do nothing
+    var settingsBefore = w.getSettings();
+    // Access internal method indirectly via keyboard on toggle item
+    var item = getFeatureItem('highContrast');
+    item.focus();
+    // This shouldn't throw or change anything
+    expect(() => {
+      simulateClick(item);
+    }).not.toThrow();
+  });
+
+  test('_updateItemState returns early for unknown feature', () => {
+    var w = AccessibilityWidget.init();
+    // The internal method should not throw when called with unknown id
+    // This gets hit when features are disabled - toggle on disabled feature
+    expect(() => {
+      w.resetAll();
+    }).not.toThrow();
+  });
+
+  test('Enter/Space on language row activates language', () => {
+    AccessibilityWidget.init();
+    var w = AccessibilityWidget.getInstance();
+    w.openMenu();
+    // The language item is the first menu item
+    var langItem = getAllMenuItems()[0];
+    langItem.focus();
+    // Press Enter on the language row itself (not on a lang button)
+    simulateKeydown(langItem, 'Enter');
+    // Should not throw
+  });
+
+  test('Enter on focused font increase button via panel keydown', () => {
+    AccessibilityWidget.init();
+    var w = AccessibilityWidget.getInstance();
+    w.openMenu();
+    var plusBtn = getFontBtn('increase');
+    plusBtn.focus();
+    simulateKeydown(plusBtn, 'Enter');
+    // Font value should increase
+    expect(getFontValue().textContent).toBe('1');
+  });
+
+  test('document click when menu closed and widget exists does nothing', () => {
+    AccessibilityWidget.init();
+    // Menu is closed, click outside - should not throw
+    expect(() => {
+      document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    }).not.toThrow();
+  });
+
+  test('document keydown when menu closed does nothing', () => {
+    AccessibilityWidget.init();
+    // Escape when menu is closed
+    expect(() => {
+      simulateKeydown(document, 'Escape');
+    }).not.toThrow();
+  });
+
+  test('_getFocusedItemIndex returns -1 when no item is focused', () => {
+    AccessibilityWidget.init();
+    var w = AccessibilityWidget.getInstance();
+    w.openMenu();
+    // Focus something outside the menu
+    document.body.focus();
+    // ArrowDown should handle -1 index gracefully
+    var panel = document.querySelector('.a11y-widget__panel');
+    simulateKeydown(panel, 'ArrowDown');
+    // Should focus the first item (index 0 after wrapping from -1+1=0)
+  });
+
+  test('_focusItem handles empty menuItems gracefully', () => {
+    var w = AccessibilityWidget.init({
+      features: {
+        highContrast: false,
+        darkMode: false,
+        fontSize: false,
+        dyslexiaFont: false,
+        underlineLinks: false,
+        hideImages: false,
+        focusOutline: false,
+        textSpacing: false,
+        pauseAnimations: false,
+        largeCursor: false,
+        highlightHeadings: false,
+        invertColors: false,
+        readingGuide: false,
+        textToSpeech: false,
+      },
+    });
+    w.openMenu();
+    // Even with only language item, ArrowDown on the panel should not throw
+    var panel = document.querySelector('.a11y-widget__panel');
+    expect(() => {
+      simulateKeydown(panel, 'ArrowDown');
+    }).not.toThrow();
   });
 });

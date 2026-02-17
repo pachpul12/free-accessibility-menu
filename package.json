@@ -17,16 +17,17 @@
     "prepublishOnly": "npm run clean && npm run build"
   },
   "devDependencies": {
-    "rollup": "^4.9.0",
-    "@rollup/plugin-terser": "^0.4.4",
-    "jest": "^29.7.0",
-    "jest-environment-jsdom": "^29.7.0",
     "@babel/core": "^7.24.0",
     "@babel/preset-env": "^7.24.0",
+    "@rollup/plugin-terser": "^0.4.4",
+    "axe-core": "^4.8.0",
     "babel-jest": "^29.7.0",
     "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "jest-axe": "^10.0.0",
+    "jest-environment-jsdom": "^29.7.0",
     "rimraf": "^5.0.5",
-    "axe-core": "^4.8.0"
+    "rollup": "^4.9.0"
   },
   "keywords": [
     "accessibility",

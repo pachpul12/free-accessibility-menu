@@ -34,6 +34,8 @@ const REQUIRED_KEYS = [
   'largeCursor',
   'highlightHeadings',
   'invertColors',
+  'readingGuide',
+  'textToSpeech',
   'resetAll',
   'closeMenu',
   'language',

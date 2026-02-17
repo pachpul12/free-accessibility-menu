@@ -158,6 +158,14 @@ function Widget(options) {
   this._rangeValueEls = {};   // featureId -> value display element
   this._langButtons = {};     // langCode -> button element
 
+  // -- Reading Guide state ---------------------------------------------------
+  this._readingGuideEl = null;
+  this._handleReadingGuideMove = this._onReadingGuideMove.bind(this);
+
+  // -- Text-to-Speech state --------------------------------------------------
+  this._ttsEnabled = false;
+  this._handleTTSClick = this._onTTSClick.bind(this);
+
   // -- Bound event handlers (for clean removal) -----------------------------
   this._handleDocumentClick = this._onDocumentClick.bind(this);
   this._handleDocumentKeydown = this._onDocumentKeydown.bind(this);
@@ -261,6 +269,14 @@ Widget.prototype._applyAllFeatures = function () {
   for (var i = 0; i < this._enabledFeatures.length; i++) {
     var f = this._enabledFeatures[i];
     applyFeature(f.id, this._settings[f.id]);
+
+    // Activate special features if persisted as active
+    if (f.id === 'readingGuide' && this._settings[f.id]) {
+      this._activateReadingGuide();
+    }
+    if (f.id === 'textToSpeech' && this._settings[f.id]) {
+      this._activateTTS();
+    }
   }
 };
 
@@ -289,8 +305,6 @@ Widget.prototype._buildDOM = function () {
   // --- Panel ---------------------------------------------------------------
   this._panel = createElement('div', 'a11y-widget__panel', {
     'id': 'a11y-widget-panel',
-    'role': 'menu',
-    'aria-label': this._t('menuTitle'),
   });
 
   // Header
@@ -308,8 +322,11 @@ Widget.prototype._buildDOM = function () {
 
   this._panel.appendChild(header);
 
-  // Content wrapper
-  this._contentEl = createElement('div', 'a11y-widget__content');
+  // Content wrapper (the actual menu role container)
+  this._contentEl = createElement('div', 'a11y-widget__content', {
+    'role': 'menu',
+    'aria-label': this._t('menuTitle'),
+  });
 
   // Language section
   this._buildLanguageSection(this._contentEl);
@@ -346,9 +363,14 @@ Widget.prototype._buildDOM = function () {
  * @param {HTMLElement} parent
  */
 Widget.prototype._buildLanguageSection = function (parent) {
-  var section = createElement('div', 'a11y-widget__section');
+  var section = createElement('div', 'a11y-widget__section', {
+    'role': 'group',
+    'aria-label': this._t('language'),
+  });
 
-  var title = createElement('div', 'a11y-widget__section-title');
+  var title = createElement('div', 'a11y-widget__section-title', {
+    'role': 'presentation',
+  });
   title.setAttribute('data-i18n', 'language');
   title.textContent = this._t('language');
   section.appendChild(title);
@@ -837,6 +859,25 @@ Widget.prototype._toggleFeature = function (featureId) {
 
   applyFeature(featureId, newValue);
   this._updateItemState(featureId, newValue);
+
+  // Special handling for Reading Guide
+  if (featureId === 'readingGuide') {
+    if (newValue) {
+      this._activateReadingGuide();
+    } else {
+      this._deactivateReadingGuide();
+    }
+  }
+
+  // Special handling for Text-to-Speech
+  if (featureId === 'textToSpeech') {
+    if (newValue) {
+      this._activateTTS();
+    } else {
+      this._deactivateTTS();
+    }
+  }
+
   this._saveState();
 
   if (this._onToggle) {
@@ -940,7 +981,7 @@ Widget.prototype._applyLanguage = function (lang) {
   // Update text content
   this._titleEl.textContent = this._t('menuTitle');
   this._toggleBtn.setAttribute('aria-label', this._t('menuTitle'));
-  this._panel.setAttribute('aria-label', this._t('menuTitle'));
+  this._contentEl.setAttribute('aria-label', this._t('menuTitle'));
   this._closeBtn.setAttribute('aria-label', this._t('closeMenu'));
   this._disclaimerEl.textContent = this._t('disclaimer');
   this._resetBtn.textContent = this._t('resetAll');
@@ -976,6 +1017,117 @@ Widget.prototype._applyLanguage = function (lang) {
       btn.setAttribute('aria-pressed', 'false');
     }
   }
+};
+
+// ---------------------------------------------------------------------------
+// Internal: Reading Guide
+// ---------------------------------------------------------------------------
+
+/**
+ * Activate the reading guide overlay.
+ */
+Widget.prototype._activateReadingGuide = function () {
+  if (!this._readingGuideEl) {
+    this._readingGuideEl = createElement('div', 'a11y-reading-guide-bar');
+    this._readingGuideEl.style.top = '-100px';
+    document.body.appendChild(this._readingGuideEl);
+  }
+  document.addEventListener('mousemove', this._handleReadingGuideMove);
+};
+
+/**
+ * Deactivate the reading guide overlay.
+ */
+Widget.prototype._deactivateReadingGuide = function () {
+  document.removeEventListener('mousemove', this._handleReadingGuideMove);
+  if (this._readingGuideEl && this._readingGuideEl.parentNode) {
+    this._readingGuideEl.parentNode.removeChild(this._readingGuideEl);
+  }
+  this._readingGuideEl = null;
+};
+
+/**
+ * Handle mousemove to reposition the reading guide bar.
+ *
+ * @param {MouseEvent} e
+ */
+Widget.prototype._onReadingGuideMove = function (e) {
+  if (this._readingGuideEl) {
+    this._readingGuideEl.style.top = (e.clientY - 6) + 'px';
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Internal: Text-to-Speech
+// ---------------------------------------------------------------------------
+
+/**
+ * Activate text-to-speech mode (click-to-speak).
+ */
+Widget.prototype._activateTTS = function () {
+  this._ttsEnabled = true;
+  document.addEventListener('click', this._handleTTSClick);
+};
+
+/**
+ * Deactivate text-to-speech mode.
+ */
+Widget.prototype._deactivateTTS = function () {
+  this._ttsEnabled = false;
+  document.removeEventListener('click', this._handleTTSClick);
+  if (typeof speechSynthesis !== 'undefined') {
+    speechSynthesis.cancel();
+  }
+  // Remove any speaking highlights
+  var highlighted = document.querySelectorAll('.a11y-tts-speaking');
+  for (var i = 0; i < highlighted.length; i++) {
+    highlighted[i].classList.remove('a11y-tts-speaking');
+  }
+};
+
+/**
+ * Handle click events for text-to-speech: read aloud the clicked element's text.
+ *
+ * @param {MouseEvent} e
+ */
+Widget.prototype._onTTSClick = function (e) {
+  if (this._destroyed || !this._ttsEnabled) {
+    return;
+  }
+  // Ignore clicks inside the widget itself
+  if (this._root && this._root.contains(e.target)) {
+    return;
+  }
+
+  var target = e.target;
+  var text = (target.textContent || '').trim();
+  if (!text || typeof speechSynthesis === 'undefined') {
+    return;
+  }
+
+  // Cancel any ongoing speech
+  speechSynthesis.cancel();
+
+  // Remove previous highlights
+  var prev = document.querySelectorAll('.a11y-tts-speaking');
+  for (var i = 0; i < prev.length; i++) {
+    prev[i].classList.remove('a11y-tts-speaking');
+  }
+
+  // Highlight the target element
+  target.classList.add('a11y-tts-speaking');
+
+  var utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = this._language;
+
+  utterance.onend = function () {
+    target.classList.remove('a11y-tts-speaking');
+  };
+  utterance.onerror = function () {
+    target.classList.remove('a11y-tts-speaking');
+  };
+
+  speechSynthesis.speak(utterance);
 };
 
 // ---------------------------------------------------------------------------
@@ -1053,6 +1205,10 @@ Widget.prototype.getSettings = function () {
  * update the UI.
  */
 Widget.prototype.resetAll = function () {
+  // Deactivate special features before resetting
+  this._deactivateReadingGuide();
+  this._deactivateTTS();
+
   // Reset all body classes
   resetAllFeatures();
 
@@ -1110,6 +1266,12 @@ Widget.prototype.destroy = function () {
   }
   this._destroyed = true;
   this._detachEvents();
+
+  // Clean up reading guide
+  this._deactivateReadingGuide();
+
+  // Clean up text-to-speech
+  this._deactivateTTS();
 
   // Remove all feature classes from document.body
   resetAllFeatures();

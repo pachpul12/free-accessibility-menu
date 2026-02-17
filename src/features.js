@@ -48,6 +48,12 @@ const ICONS = {
 
   invertColors:
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2v20"/><path d="M12 2a10 10 0 0 0 0 20" fill="currentColor"/></svg>',
+
+  readingGuide:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="10" width="20" height="4" rx="1"/><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="18" x2="20" y2="18"/></svg>',
+
+  textToSpeech:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>',
 };
 
 // ---------------------------------------------------------------------------
@@ -167,6 +173,22 @@ const FEATURES = [
     default: false,
     icon: ICONS.invertColors,
     group: 'visual',
+  },
+  {
+    id: 'readingGuide',
+    type: 'toggle',
+    cssClass: 'a11y-reading-guide',
+    default: false,
+    icon: ICONS.readingGuide,
+    group: 'navigation',
+  },
+  {
+    id: 'textToSpeech',
+    type: 'toggle',
+    cssClass: 'a11y-text-to-speech',
+    default: false,
+    icon: ICONS.textToSpeech,
+    group: 'navigation',
   },
 ];
 

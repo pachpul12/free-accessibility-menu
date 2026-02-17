@@ -20,8 +20,8 @@ beforeEach(() => {
 // ===========================================================================
 
 describe('FEATURES array structure', () => {
-  test('contains exactly 12 features', () => {
-    expect(FEATURES).toHaveLength(12);
+  test('contains exactly 14 features', () => {
+    expect(FEATURES).toHaveLength(14);
   });
 
   test('every feature has required properties', () => {
@@ -164,6 +164,24 @@ describe('Feature definitions', () => {
     expect(f.default).toBe(false);
     expect(f.group).toBe('visual');
   });
+
+  test('readingGuide is a toggle in navigation group', () => {
+    const f = getFeature('readingGuide');
+    expect(f.id).toBe('readingGuide');
+    expect(f.type).toBe('toggle');
+    expect(f.cssClass).toBe('a11y-reading-guide');
+    expect(f.default).toBe(false);
+    expect(f.group).toBe('navigation');
+  });
+
+  test('textToSpeech is a toggle in navigation group', () => {
+    const f = getFeature('textToSpeech');
+    expect(f.id).toBe('textToSpeech');
+    expect(f.type).toBe('toggle');
+    expect(f.cssClass).toBe('a11y-text-to-speech');
+    expect(f.default).toBe(false);
+    expect(f.group).toBe('navigation');
+  });
 });
 
 // ===========================================================================
@@ -181,9 +199,9 @@ describe('Feature groups', () => {
     expect(content).toHaveLength(5);
   });
 
-  test('navigation group has 2 features', () => {
+  test('navigation group has 4 features', () => {
     const nav = FEATURES.filter((f) => f.group === 'navigation');
-    expect(nav).toHaveLength(2);
+    expect(nav).toHaveLength(4);
   });
 });
 
