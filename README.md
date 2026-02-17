@@ -1,14 +1,121 @@
 # Free Accessibility Menu
 
-A free, lightweight, client-side accessibility menu widget. Zero dependencies. Drop it into any website to give users control over contrast, font size, reading aids, and more.
+A free, lightweight, client-side accessibility menu widget.
 
-- **14 accessibility features** out of the box
-- **Zero runtime dependencies** -- pure vanilla JS and CSS
-- **WCAG 2.1 keyboard navigation** -- full arrow key, Enter/Space, Escape support
-- **RTL and i18n** -- English and Hebrew built in, add any language at runtime
-- **Persistent settings** -- saves to localStorage, survives page reloads
-- **GDPR-friendly** -- no external calls, no tracking, no cookies
-- **axe-core tested** -- automated WCAG compliance checks in the test suite
+This project provides **user-controlled interface adjustments**
+(contrast, font size, reading aids, etc.) that may help improve
+usability for some users.
+
+It is a **UI enhancement tool**, not a compliance solution.
+
+------------------------------------------------------------------------
+
+## ⚠️ Important Legal Notice
+
+This project:
+
+-   **Does NOT guarantee compliance** with WCAG, ADA, EN 301 549,
+    Israeli accessibility regulations, Section 508, or any other legal
+    standard worldwide.
+-   **Does NOT replace a professional accessibility audit.**
+-   **Does NOT constitute legal advice.**
+-   **Does NOT protect against accessibility-related claims or
+    lawsuits.**
+
+Website owners remain solely responsible for implementing, testing, and
+maintaining full accessibility compliance in accordance with applicable
+laws and standards.
+
+Use of this software is entirely at your own risk.
+
+------------------------------------------------------------------------
+
+## What This Project Is
+
+-   A client-side accessibility menu
+-   A collection of optional visual and reading adjustments
+-   A usability enhancement layer
+-   A zero-dependency JavaScript widget
+
+------------------------------------------------------------------------
+
+## What This Project Is NOT
+
+-   Not a legal compliance framework\
+-   Not an ADA/WCAG certification tool\
+-   Not a substitute for proper semantic HTML, ARIA, keyboard handling,
+    or accessible design\
+-   Not a shield against lawsuits
+
+Accessibility compliance requires proper development practices across
+the entire website.
+
+------------------------------------------------------------------------
+
+## Features
+
+-   14 optional interface adjustment features
+-   Zero runtime dependencies (vanilla JS + CSS)
+-   Keyboard operable menu
+-   RTL and i18n support (English and Hebrew included)
+-   LocalStorage-based persistence
+-   No tracking, no cookies, no external calls
+-   Automated accessibility testing included in the test suite
+    (axe-core)
+
+------------------------------------------------------------------------
+
+## Responsibility of Integrators
+
+If you integrate this widget into a website:
+
+You are responsible for:
+
+-   Ensuring semantic HTML structure
+-   Ensuring proper ARIA usage
+-   Ensuring full keyboard navigation across your site
+-   Providing text alternatives for media
+-   Testing with assistive technologies
+-   Performing WCAG audits if required
+-   Consulting accessibility professionals when necessary
+
+This widget does not evaluate or modify your site's structural
+accessibility.
+
+------------------------------------------------------------------------
+
+## Accessibility Testing
+
+This project includes automated accessibility testing using `axe-core`
+within the test suite.
+
+Automated testing does not guarantee legal compliance.
+
+Manual accessibility testing is always required for full compliance.
+
+------------------------------------------------------------------------
+
+## Browser Support
+
+Tested on modern versions of Chrome, Firefox, Edge, and Safari.
+
+------------------------------------------------------------------------
+
+## No Warranty / Limitation of Liability
+
+To the maximum extent permitted by applicable law:
+
+-   This software is provided **"AS IS"**.
+-   The author makes **no warranties**, express or implied.
+-   The author shall **not be liable for any claim, damages, losses, or
+    other liability**, whether in contract, tort, or otherwise, arising
+    from or related to the use of this software.
+-   The author assumes no responsibility for how this software is used.
+
+If you require legally guaranteed accessibility compliance, you must
+engage qualified accessibility and legal professionals.
+
+------------------------------------------------------------------------
 
 ## Quick Start
 

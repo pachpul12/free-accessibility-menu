@@ -30,5 +30,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Zero dependencies:** Pure vanilla JS and CSS, no runtime dependencies
 - **Build outputs:** UMD, minified UMD, and ESM bundles via Rollup
 - **363 automated tests** across 5 test files with 98%+ coverage
-- **11 axe-core accessibility integration tests** for WCAG compliance
 - **Demo page** in `examples/index.html`
