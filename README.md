@@ -119,38 +119,75 @@ engage qualified accessibility and legal professionals.
 
 ## Quick Start
 
-### Script Tag (CDN / Self-Hosted)
+### npm / yarn
+
+```bash
+npm install free-accessibility-menu
+# or
+yarn add free-accessibility-menu
+```
+
+**ESM (recommended for modern bundlers):**
+
+```js
+import AccessibilityWidget from 'free-accessibility-menu';
+import 'free-accessibility-menu/css';
+
+AccessibilityWidget.init({
+  defaultLanguage: 'en',
+  languages: { en: 'English', he: 'עברית' }
+});
+```
+
+**CommonJS (Node.js):**
+
+```js
+const AccessibilityWidget = require('free-accessibility-menu');
+// CSS must be included separately in your build pipeline
+
+AccessibilityWidget.init({
+  defaultLanguage: 'en',
+  languages: { en: 'English', he: 'עברית' }
+});
+```
+
+### CDN (unpkg)
 
 ```html
-<link rel="stylesheet" href="dist/a11y-widget.css">
-<script src="dist/a11y-widget.umd.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/free-accessibility-menu/dist/a11y-widget.css">
+<script src="https://unpkg.com/free-accessibility-menu"></script>
 <script>
   AccessibilityWidget.init({
     defaultLanguage: 'en',
-    languages: { en: 'English', he: '\u05E2\u05D1\u05E8\u05D9\u05EA' }
+    languages: { en: 'English', he: 'עברית' }
   });
 </script>
 ```
 
-### npm
+### CDN (jsDelivr)
 
-```bash
-npm install free-accessibility-menu
+```html
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/free-accessibility-menu/dist/a11y-widget.css">
+<script src="https://cdn.jsdelivr.net/npm/free-accessibility-menu"></script>
+<script>
+  AccessibilityWidget.init({
+    defaultLanguage: 'en',
+    languages: { en: 'English', he: 'עברית' }
+  });
+</script>
 ```
 
-```js
-import AccessibilityWidget from 'free-accessibility-menu';
+### Self-Hosted (Script Tag)
 
-AccessibilityWidget.init({
-  defaultLanguage: 'en',
-  languages: { en: 'English', he: '\u05E2\u05D1\u05E8\u05D9\u05EA' }
-});
-```
-
-Don't forget to import the CSS in your build:
-
-```js
-import 'free-accessibility-menu/dist/a11y-widget.css';
+```html
+<link rel="stylesheet" href="dist/a11y-widget.css">
+<script src="dist/index.umd.min.js"></script>
+<script>
+  AccessibilityWidget.init({
+    defaultLanguage: 'en',
+    languages: { en: 'English', he: 'עברית' }
+  });
+</script>
 ```
 
 ## Features

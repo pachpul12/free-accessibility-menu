@@ -34,37 +34,48 @@ function copyCSS() {
 }
 
 export default [
-  // ── UMD (unminified) ──────────────────────────────────────────────────
+  // ── ESM (for modern bundlers and import statements) ──────────────────────
   {
     input: 'src/index.js',
     output: {
-      file: 'dist/a11y-widget.umd.js',
-      format: 'umd',
-      name: 'AccessibilityWidget',
+      file: 'dist/index.js',
+      format: 'es',
       sourcemap: true,
     },
     plugins: [copyCSS()],
   },
 
-  // ── UMD (minified) ────────────────────────────────────────────────────
+  // ── CJS (for Node.js require()) ───────────────────────────────────────────
   {
     input: 'src/index.js',
     output: {
-      file: 'dist/a11y-widget.umd.min.js',
+      file: 'dist/index.cjs',
+      format: 'cjs',
+      sourcemap: true,
+      exports: 'default',
+    },
+  },
+
+  // ── UMD (unminified - for script tags and legacy) ─────────────────────────
+  {
+    input: 'src/index.js',
+    output: {
+      file: 'dist/index.umd.js',
+      format: 'umd',
+      name: 'AccessibilityWidget',
+      sourcemap: true,
+    },
+  },
+
+  // ── UMD (minified - for CDNs like unpkg/jsdelivr) ─────────────────────────
+  {
+    input: 'src/index.js',
+    output: {
+      file: 'dist/index.umd.min.js',
       format: 'umd',
       name: 'AccessibilityWidget',
       sourcemap: true,
     },
     plugins: [terser()],
-  },
-
-  // ── ESM ────────────────────────────────────────────────────────────────
-  {
-    input: 'src/index.js',
-    output: {
-      file: 'dist/a11y-widget.esm.js',
-      format: 'es',
-      sourcemap: true,
-    },
   },
 ];

@@ -2,10 +2,24 @@
   "name": "free-accessibility-menu",
   "version": "1.0.0",
   "description": "A free, client-side accessibility menu widget with zero dependencies",
-  "main": "dist/a11y-widget.umd.js",
-  "module": "dist/a11y-widget.esm.js",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "unpkg": "./dist/index.umd.min.js",
+  "jsdelivr": "./dist/index.umd.min.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.js"
+    },
+    "./css": "./dist/a11y-widget.css",
+    "./dist/*": "./dist/*"
+  },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "rollup -c",
@@ -14,7 +28,7 @@
     "test:watch": "jest --watch",
     "lint": "eslint src/",
     "clean": "rimraf dist",
-    "prepublishOnly": "npm run clean && npm run build"
+    "prepublishOnly": "npm run clean && npm run test && npm run build"
   },
   "devDependencies": {
     "@babel/core": "^7.24.0",
@@ -35,11 +49,22 @@
     "widget",
     "wcag",
     "aria",
-    "menu"
+    "menu",
+    "client-side",
+    "zero-dependencies",
+    "web-accessibility"
   ],
+  "author": "",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/user/free-accessibility-menu"
+    "url": "git+https://github.com/pachpul12/free-accessibility-menu.git"
+  },
+  "homepage": "https://github.com/pachpul12/free-accessibility-menu#readme",
+  "bugs": {
+    "url": "https://github.com/pachpul12/free-accessibility-menu/issues"
+  },
+  "engines": {
+    "node": ">=14.0.0"
   }
 }
