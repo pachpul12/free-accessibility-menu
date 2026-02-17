@@ -22,10 +22,12 @@ const RTL_MODIFIER = 'a11y-widget--rtl';
 const ACTIVE_MODIFIER = 'a11y-widget__item--active';
 
 // ---------------------------------------------------------------------------
-// SVG icons used by the widget chrome (toggle button, close button, controls)
+// Icons used by the widget chrome (toggle button, close button, controls)
 // ---------------------------------------------------------------------------
 
-const TOGGLE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8a2 2 0 0 1 2 2c0 1.02-.38 1.53-1.15 2.15C12.1 12.78 12 13.28 12 14"/><circle cx="12" cy="17" r="0.5" fill="currentColor"/></svg>';
+const TOGGLE_ICON_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAcCAYAAAByDd+UAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAZdEVYdFNvZnR3YXJlAFBhaW50Lk5FVCA1LjEuMTGKCBbOAAAAuGVYSWZJSSoACAAAAAUAGgEFAAEAAABKAAAAGwEFAAEAAABSAAAAKAEDAAEAAAACAAAAMQECABEAAABaAAAAaYcEAAEAAABsAAAAAAAAAGAAAAABAAAAYAAAAAEAAABQYWludC5ORVQgNS4xLjExAAADAACQBwAEAAAAMDIzMAGgAwABAAAAAQAAAAWgBAABAAAAlgAAAAAAAAACAAEAAgAEAAAAUjk4AAIABwAEAAAAMDEwMAAAAAAGNdRzso9yOwAABIdJREFUSEuVll1Mm1Ucxp9z3rcthVXa9QvK2ACXCNvSAgNmhM0PFiYXwG7UxESJicZponGUMWOWeGGc46NbojFbojdjF7vwIwFdxDhE2eaMwqAKZsuWsInQD6AbGzJK+57jjW/z9hQK/K76f57/+39ymvc95xCswb6WP7Me0Jy9Ia58J3panEC9SY5cHmzfsSB6WogoqNS9/VtGQFfUPIf4GdFLh5XTN2xk4uyAb89D0cNqgeWtwdIgx4hWc0m8aVohPVotHU5Cyke6nEkzAICKgrsl1CCGHXbm0KGO3N5i/UiWVk9HiPNr7pZwk6gnrdDjDTXMgPdqtUeQ0XLdZz6l1i5vkGv9tbBz0uQ/6UzMTKzQ0xrwiGEAcB9LJ9Xf7pZJd7K7NjOE95R6Jz1qTQGg7ki/YYaT0aROAXdr6MlZovOL+noIQzda29pngBoY5OUviU1aGo93SHHQ7aK+EWZJZTMAkGrvsHECeYtig5Z8OZK5wKz777LUv3wjFMgTm+g8tlaLhsiCkm3UI3pT1DfKAiusoREoP4iGigVyGwBwYrCPdG697qJz2Va+YLaSxWyzvGR2SpNGC2f14nOrMcvQl/IdqlQa/jIalWA3AIDAAgCc2Yp0kqVSh+yKDMW0W0bhbkKMiTdwPZCVvqsS/T8mc2w4epU3LQOAHdKBg8R+8TMeVMTejZIS6KL/lg51PurX6nYiv+jvsp3f6Z2uXkZmJQfhADgAEHAugS3fx/K69tyUwGlfDtl1OFAboeSiqtmI3Fo6bfuYZW7nHZ/fUlz/hw0AhAGoBXjluzddUzHTlHbWSiQF2imrc+LGj2OsJJ7clp7NoM+P+RxflHjvHZvH0geiryUp0EZRaIg9jE5JxunktrUpohHTQ2bKC0B3XfS0JL2lso5Eo1yfodXWywK31g378m+Iugi1UalOLZR4PMMg30u766xGmPOvao/263OoUiV6Kg6JHqBmMnEloXCppELaGU7q2gBhvuvpgk15w6KuYqG3L9PBjqrFzVT/KgDMMFw43QFuI6xGbE7H1oxIAQDMKbzv6/fBXHK8zCHz5wp1U1km6JsBwC5LhwZOVC1SANjCfz6nPuzxBh7/o8t1xUrlI5qZq2IHP/jrhzvuqLWndco91L5ldLQ990sl5nQ9wPJZALDJd7qhPfHLjwbcwTjxA8A23LNf9RXP7mqbezOixD5Ve0Qs0L087rOeK/NOuUOQEmdlLlf2BYg0qNY5lJVe63T5IV4xytrCDSGF9QJAAZl3/dL1WKCqLVi8xKT6Wa4kTn6HxF+T6VLv0InC8B7vnR2TMIxr52hxUNIw2un8Vq1Tbm2eI+HGGcZ6AMAKqcnKxr//6dRTUQB460wB+eTQbQ4AT7wzZpmXcl+4i9hpcYaKQ0LjaEfON1otJRAAytoCpSGFJG5uVujek6lyS5YRjcWRGWbsfPITqThlpWykPS/l2rJiIADsP9ZvCEU9r8yx+KorWAmbpHs9X/Z3Xzj+zJLoIV2gSk3b71kPsG3vjMLSXvUdEn3WJP196dJHFWk3jv8AacOiahz5vesAAAAASUVORK5CYII=';
+
+const TOGGLE_ICON_HOVER_PNG = 'data:image/png;base64,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';
 
 const CLOSE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
 
@@ -299,7 +301,24 @@ Widget.prototype._buildDOM = function () {
     'aria-label': this._t('menuTitle'),
     'aria-controls': 'a11y-widget-panel',
   });
-  this._toggleBtn.appendChild(parseSVG(TOGGLE_ICON_SVG));
+  var toggleIcon = document.createElement('img');
+  toggleIcon.src = TOGGLE_ICON_PNG;
+  toggleIcon.alt = '';
+  toggleIcon.setAttribute('aria-hidden', 'true');
+  toggleIcon.width = 28;
+  toggleIcon.height = 28;
+  this._toggleBtn.appendChild(toggleIcon);
+
+  // Preload hover image
+  var hoverPreload = new Image();
+  hoverPreload.src = TOGGLE_ICON_HOVER_PNG;
+
+  this._toggleBtn.addEventListener('mouseenter', function () {
+    toggleIcon.src = TOGGLE_ICON_HOVER_PNG;
+  });
+  this._toggleBtn.addEventListener('mouseleave', function () {
+    toggleIcon.src = TOGGLE_ICON_PNG;
+  });
   this._root.appendChild(this._toggleBtn);
 
   // --- Panel ---------------------------------------------------------------

@@ -61,7 +61,7 @@
   padding: 0;
   border: none;
   border-radius: 50%;
-  background-color: var(--a11y-primary);
+  background-color: transparent;
   color: #ffffff;
   cursor: pointer;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
@@ -71,7 +71,6 @@
 }
 
 .a11y-widget__toggle:hover {
-  background-color: var(--a11y-primary-hover);
   transform: scale(1.08);
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.28);
 }
@@ -85,11 +84,11 @@
   outline-offset: 2px;
 }
 
-.a11y-widget__toggle svg {
+.a11y-widget__toggle img {
   width: 28px;
   height: 28px;
-  fill: currentColor;
   pointer-events: none;
+  border-radius: 50%;
 }
 
 /* --------------------------------------------------------------------------
