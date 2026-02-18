@@ -70,10 +70,7 @@ describe('axe-core: Widget open state', () => {
   });
 
   test('open panel in Hebrew (RTL) has no accessibility violations', async () => {
-    var w = AccessibilityWidget.init({
-      defaultLanguage: 'he',
-      languages: { en: 'English', he: '\u05E2\u05D1\u05E8\u05D9\u05EA' },
-    });
+    var w = AccessibilityWidget.init({ defaultLanguage: 'he' });
     w.openMenu();
     var results = await axe(document.body, AXE_OPTIONS);
     expect(results).toHaveNoViolations();

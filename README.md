@@ -133,10 +133,7 @@ yarn add free-accessibility-menu
 import AccessibilityWidget from 'free-accessibility-menu';
 import 'free-accessibility-menu/css';
 
-AccessibilityWidget.init({
-  defaultLanguage: 'en',
-  languages: { en: 'English', he: 'עברית' }
-});
+AccessibilityWidget.init({ defaultLanguage: 'en' });
 ```
 
 **CommonJS (Node.js):**
@@ -145,10 +142,7 @@ AccessibilityWidget.init({
 const AccessibilityWidget = require('free-accessibility-menu');
 // CSS must be included separately in your build pipeline
 
-AccessibilityWidget.init({
-  defaultLanguage: 'en',
-  languages: { en: 'English', he: 'עברית' }
-});
+AccessibilityWidget.init({ defaultLanguage: 'en' });
 ```
 
 ### CDN (unpkg)
@@ -157,10 +151,7 @@ AccessibilityWidget.init({
 <link rel="stylesheet" href="https://unpkg.com/free-accessibility-menu/dist/a11y-widget.css">
 <script src="https://unpkg.com/free-accessibility-menu"></script>
 <script>
-  AccessibilityWidget.init({
-    defaultLanguage: 'en',
-    languages: { en: 'English', he: 'עברית' }
-  });
+  AccessibilityWidget.init({ defaultLanguage: 'en' });
 </script>
 ```
 
@@ -170,10 +161,7 @@ AccessibilityWidget.init({
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/free-accessibility-menu/dist/a11y-widget.css">
 <script src="https://cdn.jsdelivr.net/npm/free-accessibility-menu"></script>
 <script>
-  AccessibilityWidget.init({
-    defaultLanguage: 'en',
-    languages: { en: 'English', he: 'עברית' }
-  });
+  AccessibilityWidget.init({ defaultLanguage: 'en' });
 </script>
 ```
 
@@ -183,10 +171,7 @@ AccessibilityWidget.init({
 <link rel="stylesheet" href="dist/a11y-widget.css">
 <script src="dist/index.umd.min.js"></script>
 <script>
-  AccessibilityWidget.init({
-    defaultLanguage: 'en',
-    languages: { en: 'English', he: 'עברית' }
-  });
+  AccessibilityWidget.init({ defaultLanguage: 'en' });
 </script>
 ```
 
@@ -197,8 +182,7 @@ open the widget UI in that language from the very first render:
 
 ```js
 AccessibilityWidget.init({
-  defaultLanguage: 'he',                        // start in Hebrew
-  languages: { en: 'English', he: 'עברית' }
+  defaultLanguage: 'he',   // start in Hebrew
 });
 ```
 
@@ -254,10 +238,8 @@ Initializes the widget and appends it to the page. Returns the widget instance.
 ```js
 var widget = AccessibilityWidget.init({
   // Language code for the initial UI language (default: 'en')
+  // All 10 built-in languages are always available in the selector.
   defaultLanguage: 'en',
-
-  // Map of language codes to display labels
-  languages: { en: 'English', he: '\u05E2\u05D1\u05E8\u05D9\u05EA' },
 
   // Disable specific features (all enabled by default)
   features: {

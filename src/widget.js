@@ -10,7 +10,7 @@
 
 import { FEATURES, getFeature, applyFeature, resetAllFeatures } from './features.js';
 import { saveSettings, loadSettings, clearSettings, setStorageKey, getStorageKey } from './storage.js';
-import { getTranslation, getAvailableLanguages, isRTL } from './i18n.js';
+import { getTranslation, getAvailableLanguages, getNativeName, isRTL } from './i18n.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -126,7 +126,6 @@ function Widget(options) {
 
   // -- Configuration --------------------------------------------------------
   this._language = options.defaultLanguage || 'en';
-  this._languages = options.languages || null;
   this._onToggle = typeof options.onToggle === 'function' ? options.onToggle : null;
   this._onOpenMenu = typeof options.onOpenMenu === 'function' ? options.onOpenMenu : null;
   this._onCloseMenu = typeof options.onCloseMenu === 'function' ? options.onCloseMenu : null;
@@ -404,11 +403,8 @@ Widget.prototype._buildLanguageSection = function (parent) {
     'tabindex': '-1',
   });
 
-  // Determine which languages to offer, sorted by global popularity
-  var langs = (this._languages
-    ? Object.keys(this._languages)
-    : getAvailableLanguages()
-  ).slice().sort(function (a, b) {
+  // All registered languages, sorted by global popularity
+  var langs = getAvailableLanguages().slice().sort(function (a, b) {
     var ai = LANG_POPULARITY.indexOf(a);
     var bi = LANG_POPULARITY.indexOf(b);
     if (ai === -1) ai = LANG_POPULARITY.length;
@@ -422,7 +418,7 @@ Widget.prototype._buildLanguageSection = function (parent) {
 
   for (var i = 0; i < langs.length; i++) {
     var code = langs[i];
-    var label = this._languages ? this._languages[code] : code.toUpperCase();
+    var label = getNativeName(code);
     var option = document.createElement('option');
     option.value = code;
     option.textContent = label;

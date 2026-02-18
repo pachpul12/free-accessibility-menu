@@ -943,17 +943,26 @@ describe('Configuration Options', () => {
     expect(w.getSettings()).toHaveProperty('darkMode');
   });
 
-  test('custom languages option', () => {
-    AccessibilityWidget.init({
-      languages: { en: 'English', he: 'Hebrew', fr: 'French' },
-    });
+  test('all 10 built-in languages appear in the language select', () => {
+    var w = AccessibilityWidget.init();
+    w.openMenu();
     var sel = getLangSelect();
     expect(sel).not.toBeNull();
     var values = Array.from(sel.options).map(function (o) { return o.value; });
-    expect(values).toContain('en');
-    expect(values).toContain('he');
-    expect(values).toContain('fr');
-    expect(sel.options[values.indexOf('en')].textContent).toBe('English');
+    ['en', 'he', 'zh', 'es', 'ar', 'pt', 'fr', 'de', 'ja', 'ru'].forEach(function (code) {
+      expect(values).toContain(code);
+    });
+  });
+
+  test('language option labels use native names', () => {
+    var w = AccessibilityWidget.init();
+    w.openMenu();
+    var sel = getLangSelect();
+    var optionMap = {};
+    Array.from(sel.options).forEach(function (o) { optionMap[o.value] = o.textContent; });
+    expect(optionMap['en']).toBe('English');
+    expect(optionMap['he']).toBe('\u05E2\u05D1\u05E8\u05D9\u05EA');
+    expect(optionMap['de']).toBe('Deutsch');
   });
 
   test('destroyed widget openMenu is a no-op', () => {

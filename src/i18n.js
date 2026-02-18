@@ -20,6 +20,7 @@
  */
 const translations = {
   en: {
+    nativeName: 'English',
     menuTitle: 'Accessibility Menu',
     highContrast: 'High Contrast',
     darkMode: 'Dark Mode',
@@ -46,6 +47,7 @@ const translations = {
   },
 
   he: {
+    nativeName: '\u05E2\u05D1\u05E8\u05D9\u05EA',
     menuTitle: '\u05EA\u05E4\u05E8\u05D9\u05D8 \u05E0\u05D2\u05D9\u05E9\u05D5\u05EA',
     highContrast: '\u05E0\u05D9\u05D2\u05D5\u05D3\u05D9\u05D5\u05EA \u05D2\u05D1\u05D5\u05D4\u05D4',
     darkMode: '\u05DE\u05E6\u05D1 \u05DB\u05D4\u05D4',
@@ -72,6 +74,7 @@ const translations = {
   },
 
   zh: {
+    nativeName: '\u4E2D\u6587',
     menuTitle: '\u65E0\u969C\u788D\u83DC\u5355',
     highContrast: '\u9AD8\u5BF9\u6BD4\u5EA6',
     darkMode: '\u6DF1\u8272\u6A21\u5F0F',
@@ -98,6 +101,7 @@ const translations = {
   },
 
   es: {
+    nativeName: 'Espa\u00F1ol',
     menuTitle: 'Men\u00FA de accesibilidad',
     highContrast: 'Alto contraste',
     darkMode: 'Modo oscuro',
@@ -124,6 +128,7 @@ const translations = {
   },
 
   ar: {
+    nativeName: '\u0627\u0644\u0639\u0631\u0628\u064A\u0629',
     menuTitle: '\u0642\u0627\u0626\u0645\u0629 \u0625\u0645\u0643\u0627\u0646\u064A\u0629 \u0627\u0644\u0648\u0635\u0648\u0644',
     highContrast: '\u062A\u0628\u0627\u064A\u0646 \u0639\u0627\u0644\u0650',
     darkMode: '\u0627\u0644\u0648\u0636\u0639 \u0627\u0644\u062F\u0627\u0643\u0646',
@@ -150,6 +155,7 @@ const translations = {
   },
 
   pt: {
+    nativeName: 'Portugu\u00EAs',
     menuTitle: 'Menu de acessibilidade',
     highContrast: 'Alto contraste',
     darkMode: 'Modo escuro',
@@ -176,6 +182,7 @@ const translations = {
   },
 
   fr: {
+    nativeName: 'Fran\u00E7ais',
     menuTitle: 'Menu d\u2019accessibilit\u00E9',
     highContrast: 'Contraste \u00E9lev\u00E9',
     darkMode: 'Mode sombre',
@@ -202,6 +209,7 @@ const translations = {
   },
 
   de: {
+    nativeName: 'Deutsch',
     menuTitle: 'Barrierefreiheitsmen\u00FC',
     highContrast: 'Hoher Kontrast',
     darkMode: 'Dunkelmodus',
@@ -228,6 +236,7 @@ const translations = {
   },
 
   ja: {
+    nativeName: '\u65E5\u672C\u8A9E',
     menuTitle: '\u30A2\u30AF\u30BB\u30B7\u30D3\u30EA\u30C6\u30A3\u30E1\u30CB\u30E5\u30FC',
     highContrast: '\u9AD8\u30B3\u30F3\u30C8\u30E9\u30B9\u30C8',
     darkMode: '\u30C0\u30FC\u30AF\u30E2\u30FC\u30C9',
@@ -254,6 +263,7 @@ const translations = {
   },
 
   ru: {
+    nativeName: '\u0420\u0443\u0441\u0441\u043A\u0438\u0439',
     menuTitle: '\u041C\u0435\u043D\u044E \u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E\u0441\u0442\u0438',
     highContrast: '\u0412\u044B\u0441\u043E\u043A\u0438\u0439 \u043A\u043E\u043D\u0442\u0440\u0430\u0441\u0442',
     darkMode: '\u0422\u0451\u043C\u043D\u044B\u0439 \u0440\u0435\u0436\u0438\u043C',
@@ -337,6 +347,19 @@ export function getAvailableLanguages() {
  */
 export function isRTL(lang) {
   return RTL_LANGUAGES.has(lang);
+}
+
+/**
+ * Return the native name of a language (e.g. "Deutsch" for "de").
+ *
+ * Reads the `nativeName` key from the translation registry.  Falls back to
+ * the code in upper-case when no native name is registered.
+ *
+ * @param {string} code - BCP-47 language code.
+ * @returns {string}
+ */
+export function getNativeName(code) {
+  return (translations[code] && translations[code].nativeName) || code.toUpperCase();
 }
 
 /**

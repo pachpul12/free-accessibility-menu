@@ -142,45 +142,22 @@ describe('examples/index.html: HTML structure', () => {
 // ===========================================================================
 
 describe('examples/index.html: widget initialization', () => {
-  // These are the exact options used in examples/index.html
-  var EXAMPLE_LANGUAGES = {
-    en: 'English',
-    he: '\u05E2\u05D1\u05E8\u05D9\u05EA',
-    zh: '\u4E2D\u6587',
-    es: 'Espa\u00F1ol',
-    ar: '\u0627\u0644\u0639\u0631\u0628\u064A\u0629',
-    pt: 'Portugu\u00EAs',
-    fr: 'Fran\u00E7ais',
-    de: 'Deutsch',
-    ja: '\u65E5\u672C\u8A9E',
-    ru: '\u0420\u0443\u0441\u0441\u043A\u0438\u0439',
-  };
-
   test('widget initializes with example options without throwing', () => {
     expect(function () {
       AccessibilityWidget.init({
         defaultLanguage: 'en',
-        languages: EXAMPLE_LANGUAGES,
         onToggle: function () {},
       });
     }).not.toThrow();
   });
 
   test('widget toggle button is injected into the DOM after init', () => {
-    AccessibilityWidget.init({
-      defaultLanguage: 'en',
-      languages: EXAMPLE_LANGUAGES,
-      onToggle: function () {},
-    });
+    AccessibilityWidget.init({ defaultLanguage: 'en', onToggle: function () {} });
     expect(document.querySelector('.a11y-widget__toggle')).not.toBeNull();
   });
 
   test('menu can be opened', () => {
-    var w = AccessibilityWidget.init({
-      defaultLanguage: 'en',
-      languages: EXAMPLE_LANGUAGES,
-      onToggle: function () {},
-    });
+    var w = AccessibilityWidget.init({ defaultLanguage: 'en', onToggle: function () {} });
     w.openMenu();
     var root = document.querySelector('.a11y-widget');
     expect(root).not.toBeNull();
@@ -188,26 +165,19 @@ describe('examples/index.html: widget initialization', () => {
     expect(document.querySelector('.a11y-widget__toggle').getAttribute('aria-expanded')).toBe('true');
   });
 
-  test('both configured languages appear in the language switcher', () => {
-    var w = AccessibilityWidget.init({
-      defaultLanguage: 'en',
-      languages: EXAMPLE_LANGUAGES,
-      onToggle: function () {},
-    });
+  test('all 10 built-in languages appear in the language switcher', () => {
+    var w = AccessibilityWidget.init({ defaultLanguage: 'en', onToggle: function () {} });
     w.openMenu();
     var sel = document.querySelector('.a11y-widget__lang-select');
     var values = Array.from(sel.options).map(function (o) { return o.value; });
-    expect(values).toContain('en');
-    expect(values).toContain('he');
+    ['en', 'he', 'zh', 'es', 'ar', 'pt', 'fr', 'de', 'ja', 'ru'].forEach(function (code) {
+      expect(values).toContain(code);
+    });
   });
 
   test('onToggle callback fires when a feature is toggled', () => {
     var onToggle = jest.fn();
-    var w = AccessibilityWidget.init({
-      defaultLanguage: 'en',
-      languages: EXAMPLE_LANGUAGES,
-      onToggle: onToggle,
-    });
+    var w = AccessibilityWidget.init({ defaultLanguage: 'en', onToggle: onToggle });
     w.openMenu();
     var btn = document.querySelector('[data-feature="highContrast"]');
     btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -223,7 +193,6 @@ describe('examples/index.html: axe-core accessibility', () => {
   var AXE_OPTIONS = { rules: { region: { enabled: false } } };
   var EXAMPLE_OPTIONS = {
     defaultLanguage: 'en',
-    languages: { en: 'English', he: '\u05E2\u05D1\u05E8\u05D9\u05EA' },
     onToggle: function () {},
   };
 

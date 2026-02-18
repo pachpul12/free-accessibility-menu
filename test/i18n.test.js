@@ -18,6 +18,7 @@ import translations, {
 
 // ── Helper: all translation keys that every language must define ────────────
 const REQUIRED_KEYS = [
+  'nativeName',
   'menuTitle',
   'highContrast',
   'darkMode',

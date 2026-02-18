@@ -24,8 +24,6 @@ let _instance = null;
 /**
  * @typedef {Object} WidgetOptions
  * @property {string}  [defaultLanguage='en']  - Initial language code.
- * @property {Record<string, string>} [languages] - Map of code to display
- *   label (e.g. `{ en: 'English', he: 'Hebrew' }`).
  * @property {Record<string, boolean>} [features] - Enable/disable features
  *   by id.  Omit or set to `true` to enable; set `false` to disable.
  * @property {Function} [onToggle]    - Callback fired when a feature changes.
