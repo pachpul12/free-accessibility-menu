@@ -60,8 +60,8 @@ function getFontValue() {
   return document.querySelector('.a11y-widget__font-value');
 }
 
-function getLangBtn(code) {
-  return document.querySelector('.a11y-widget__lang-btn[data-lang="' + code + '"]');
+function getLangSelect() {
+  return document.querySelector('.a11y-widget__lang-select');
 }
 
 // Feature IDs and CSS classes
@@ -235,9 +235,12 @@ describe('DOM Structure', () => {
     expect(getFontValue().textContent).toBe('0');
   });
 
-  test('language buttons exist (en, he)', () => {
-    expect(getLangBtn('en')).not.toBeNull();
-    expect(getLangBtn('he')).not.toBeNull();
+  test('language select exists with en and he options', () => {
+    var sel = getLangSelect();
+    expect(sel).not.toBeNull();
+    var values = Array.from(sel.options).map(function (o) { return o.value; });
+    expect(values).toContain('en');
+    expect(values).toContain('he');
   });
 
   test('reset button exists', () => {
@@ -669,11 +672,11 @@ describe('Keyboard Navigation', () => {
     expect(getFontValue().textContent).toBe('1');
   });
 
-  test('Enter on language button changes language', () => {
+  test('changing language select switches language', () => {
     instance.openMenu();
-    var heBtn = getLangBtn('he');
-    heBtn.focus();
-    simulateKeydown(heBtn, 'Enter');
+    var sel = getLangSelect();
+    sel.value = 'he';
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
     expect(document.documentElement.getAttribute('lang')).toBe('he');
   });
 });
@@ -694,8 +697,10 @@ describe('Language Switching', () => {
     expect(document.documentElement.getAttribute('lang')).toBe('he');
   });
 
-  test('click on Hebrew language button switches language', () => {
-    simulateClick(getLangBtn('he'));
+  test('selecting Hebrew in language select switches language', () => {
+    var sel = getLangSelect();
+    sel.value = 'he';
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
     expect(document.documentElement.getAttribute('lang')).toBe('he');
   });
 
@@ -729,11 +734,11 @@ describe('Language Switching', () => {
     expect(document.documentElement.getAttribute('dir')).toBe('ltr');
   });
 
-  test('language buttons update aria-pressed', () => {
+  test('language select value updates when language changes', () => {
     instance.setLanguage('he');
-    expect(getLangBtn('he').getAttribute('aria-pressed')).toBe('true');
-    expect(getLangBtn('en').getAttribute('aria-pressed')).toBe('false');
-    expect(getLangBtn('he').classList.contains('a11y-widget__lang-btn--active')).toBe(true);
+    expect(getLangSelect().value).toBe('he');
+    instance.setLanguage('en');
+    expect(getLangSelect().value).toBe('en');
   });
 
   test('setLanguage to same language is no-op', () => {
@@ -942,10 +947,13 @@ describe('Configuration Options', () => {
     AccessibilityWidget.init({
       languages: { en: 'English', he: 'Hebrew', fr: 'French' },
     });
-    expect(getLangBtn('en')).not.toBeNull();
-    expect(getLangBtn('he')).not.toBeNull();
-    expect(getLangBtn('fr')).not.toBeNull();
-    expect(getLangBtn('en').textContent).toBe('English');
+    var sel = getLangSelect();
+    expect(sel).not.toBeNull();
+    var values = Array.from(sel.options).map(function (o) { return o.value; });
+    expect(values).toContain('en');
+    expect(values).toContain('he');
+    expect(values).toContain('fr');
+    expect(sel.options[values.indexOf('en')].textContent).toBe('English');
   });
 
   test('destroyed widget openMenu is a no-op', () => {

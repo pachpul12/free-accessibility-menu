@@ -184,11 +184,10 @@ describe('examples/index.html: widget initialization', () => {
       onToggle: function () {},
     });
     w.openMenu();
-    var codes = Array.from(
-      document.querySelectorAll('.a11y-widget__lang-btn')
-    ).map(function (btn) { return btn.dataset.lang; });
-    expect(codes).toContain('en');
-    expect(codes).toContain('he');
+    var sel = document.querySelector('.a11y-widget__lang-select');
+    var values = Array.from(sel.options).map(function (o) { return o.value; });
+    expect(values).toContain('en');
+    expect(values).toContain('he');
   });
 
   test('onToggle callback fires when a feature is toggled', () => {

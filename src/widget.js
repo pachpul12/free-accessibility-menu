@@ -158,7 +158,7 @@ function Widget(options) {
   this._menuItems = [];       // ordered list of focusable menu items
   this._itemElements = {};    // featureId -> item DOM element
   this._rangeValueEls = {};   // featureId -> value display element
-  this._langButtons = {};     // langCode -> button element
+  this._langSelect = null;    // <select> element for language switcher
 
   // -- Reading Guide state ---------------------------------------------------
   this._readingGuideEl = null;
@@ -382,6 +382,7 @@ Widget.prototype._buildDOM = function () {
  * @param {HTMLElement} parent
  */
 Widget.prototype._buildLanguageSection = function (parent) {
+  var self = this;
   var section = createElement('div', 'a11y-widget__section', {
     'role': 'group',
     'aria-label': this._t('language'),
@@ -404,31 +405,28 @@ Widget.prototype._buildLanguageSection = function (parent) {
     ? Object.keys(this._languages)
     : getAvailableLanguages();
 
-  var langContainer = createElement('div', 'a11y-widget__lang-buttons');
+  var select = createElement('select', 'a11y-widget__lang-select', {
+    'aria-label': this._t('language'),
+  });
 
   for (var i = 0; i < langs.length; i++) {
     var code = langs[i];
     var label = this._languages ? this._languages[code] : code.toUpperCase();
-
-    var btn = createElement('button', 'a11y-widget__lang-btn', {
-      'data-lang': code,
-      'aria-label': label,
-      'type': 'button',
-    });
-    btn.textContent = label;
-
+    var option = document.createElement('option');
+    option.value = code;
+    option.textContent = label;
     if (code === this._language) {
-      btn.classList.add('a11y-widget__lang-btn--active');
-      btn.setAttribute('aria-pressed', 'true');
-    } else {
-      btn.setAttribute('aria-pressed', 'false');
+      option.selected = true;
     }
-
-    this._langButtons[code] = btn;
-    langContainer.appendChild(btn);
+    select.appendChild(option);
   }
 
-  item.appendChild(langContainer);
+  select.addEventListener('change', function () {
+    self.setLanguage(select.value);
+  });
+
+  this._langSelect = select;
+  item.appendChild(select);
   section.appendChild(item);
   this._menuItems.push(item);
 
@@ -632,16 +630,6 @@ Widget.prototype._onPanelClick = function (e) {
     return;
   }
 
-  // Language button
-  var langBtn = this._findAncestorWithClass(target, 'a11y-widget__lang-btn');
-  if (langBtn) {
-    var langCode = langBtn.getAttribute('data-lang');
-    if (langCode) {
-      this.setLanguage(langCode);
-    }
-    return;
-  }
-
   // Font size +/- buttons
   var fontBtn = this._findAncestorWithClass(target, 'a11y-widget__font-btn');
   if (fontBtn) {
@@ -787,16 +775,6 @@ Widget.prototype._activateCurrentItem = function (target) {
     var featureId = fontBtn.getAttribute('data-feature');
     if (action && featureId) {
       this._adjustRange(featureId, action);
-    }
-    return;
-  }
-
-  // Check if target is a language button
-  var langBtn = this._findAncestorWithClass(target, 'a11y-widget__lang-btn');
-  if (langBtn) {
-    var langCode = langBtn.getAttribute('data-lang');
-    if (langCode) {
-      this.setLanguage(langCode);
     }
     return;
   }
@@ -1023,18 +1001,9 @@ Widget.prototype._applyLanguage = function (lang) {
     increaseBtns[u].setAttribute('aria-label', this._t('increaseFontSize'));
   }
 
-  // Update language button active states
-  var codes = Object.keys(this._langButtons);
-  for (var j = 0; j < codes.length; j++) {
-    var code = codes[j];
-    var btn = this._langButtons[code];
-    if (code === lang) {
-      btn.classList.add('a11y-widget__lang-btn--active');
-      btn.setAttribute('aria-pressed', 'true');
-    } else {
-      btn.classList.remove('a11y-widget__lang-btn--active');
-      btn.setAttribute('aria-pressed', 'false');
-    }
+  // Update language select value
+  if (this._langSelect) {
+    this._langSelect.value = lang;
   }
 };
 
@@ -1329,7 +1298,7 @@ Widget.prototype.destroy = function () {
   this._menuItems = [];
   this._itemElements = {};
   this._rangeValueEls = {};
-  this._langButtons = {};
+  this._langSelect = null;
 };
 
 export default Widget;

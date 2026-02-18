@@ -240,7 +240,29 @@
 }
 
 /* --------------------------------------------------------------------------
-   11. Menu Item (.a11y-widget__item)
+   11. Language Select (.a11y-widget__lang-select)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__lang-select {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 14px;
+  font-family: var(--a11y-font-family);
+  color: var(--a11y-text);
+  background-color: var(--a11y-bg);
+  border: 1px solid var(--a11y-border);
+  border-radius: 6px;
+  cursor: pointer;
+  appearance: auto;
+}
+
+.a11y-widget__lang-select:focus {
+  outline: 2px solid var(--a11y-primary);
+  outline-offset: 1px;
+}
+
+/* --------------------------------------------------------------------------
+   12. Menu Item (.a11y-widget__item)
    -------------------------------------------------------------------------- */
 
 .a11y-widget__item {
