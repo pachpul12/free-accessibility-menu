@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accessibility Widget – Hebrew Init Demo</title>
+
+  <!-- Widget stylesheet -->
+  <link rel="stylesheet" href="../dist/a11y-widget.css">
+
+  <!-- Page styles -->
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        Oxygen, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+      font-size: 1rem;
+      line-height: 1.6;
+      color: #222;
+      background-color: #fafafa;
+    }
+
+    .site-header {
+      background-color: #1a3d5c;
+      color: #fff;
+      padding: 0;
+    }
+
+    .site-header__inner {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .site-header__brand {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #fff;
+      text-decoration: none;
+    }
+
+    .site-nav {
+      display: flex;
+      gap: 20px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .site-nav a {
+      color: #ccdbe8;
+      text-decoration: none;
+      font-size: 0.95rem;
+    }
+
+    .site-nav a:hover,
+    .site-nav a:focus {
+      color: #fff;
+    }
+
+    .main-content {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 32px 24px 64px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin: 0 0 8px;
+      color: #1a3d5c;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      margin: 40px 0 12px;
+      color: #1a3d5c;
+    }
+
+    p {
+      margin: 0 0 16px;
+    }
+
+    code {
+      background: #f0f0f0;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 0.9em;
+    }
+
+    .demo-code {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 20px 24px;
+      border-radius: 8px;
+      font-family: "Courier New", Courier, monospace;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      overflow-x: auto;
+      white-space: pre;
+      direction: ltr;
+      text-align: left;
+      margin: 0 0 24px;
+    }
+
+    .site-footer {
+      background-color: #1a3d5c;
+      color: #ccdbe8;
+      padding: 24px;
+      margin-top: 48px;
+    }
+
+    .site-footer__inner {
+      max-width: 960px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 0.875rem;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 16px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .footer-links a {
+      color: #ccdbe8;
+      text-decoration: none;
+    }
+
+    .footer-links a:hover,
+    .footer-links a:focus {
+      color: #fff;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== Header ===== -->
+  <header class="site-header">
+    <div class="site-header__inner">
+      <a href="#" class="site-header__brand">הדגמת נגישות</a>
+      <nav aria-label="ניווט ראשי">
+        <ul class="site-nav">
+          <li><a href="#about">אודות</a></li>
+          <li><a href="#usage">שימוש</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ===== Main content ===== -->
+  <main class="main-content">
+
+    <h1>Accessibility Widget – Initial Language Demo</h1>
+    <p>
+      This page demonstrates initialising the accessibility widget with
+      <code>defaultLanguage: 'he'</code>. The floating button opens the panel
+      in Hebrew from the very first render.
+    </p>
+
+    <section id="about">
+      <h2>About This Demo</h2>
+      <p>
+        Pass any supported two-letter BCP-47 language code to
+        <code>defaultLanguage</code> when calling
+        <code>AccessibilityWidget.init()</code>. The widget will render its
+        menu title, all feature labels, and the language selector in that
+        language immediately — no user interaction required.
+      </p>
+      <p>
+        Built-in languages are <strong>English</strong> (<code>en</code>) and
+        <strong>Hebrew</strong> (<code>he</code>). Register additional languages
+        at runtime with <code>registerLanguage()</code>.
+      </p>
+    </section>
+
+    <section id="usage">
+      <h2>Usage</h2>
+      <p>Initialise the widget in Hebrew by passing <code>defaultLanguage: 'he'</code>:</p>
+      <pre class="demo-code">AccessibilityWidget.init({
+  defaultLanguage: 'he',
+  languages: { en: 'English', he: '&#x05E2;&#x05D1;&#x05E8;&#x05D9;&#x05EA;' }
+});</pre>
+    </section>
+
+  </main>
+
+  <!-- ===== Footer ===== -->
+  <footer class="site-footer">
+    <div class="site-footer__inner">
+      <span>&copy; 2026 AccessiDemo</span>
+      <nav aria-label="Footer navigation">
+        <ul class="footer-links">
+          <li><a href="#">Accessibility Statement</a></li>
+        </ul>
+      </nav>
+    </div>
+  </footer>
+
+  <!-- ===== Initialize the Accessibility Widget in Hebrew ===== -->
+  <script src="../dist/index.umd.js"></script>
+  <script>
+    AccessibilityWidget.init({
+      defaultLanguage: 'he',
+      languages: { en: 'English', he: '\u05E2\u05D1\u05E8\u05D9\u05EA' }
+    });
+  </script>
+
+</body>
+</html>

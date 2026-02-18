@@ -190,6 +190,28 @@ AccessibilityWidget.init({
 </script>
 ```
 
+## Setting the Initial Language
+
+Pass `defaultLanguage` to `init()` with a two-letter BCP-47 language code to
+open the widget UI in that language from the very first render:
+
+```js
+AccessibilityWidget.init({
+  defaultLanguage: 'he',                        // start in Hebrew
+  languages: { en: 'English', he: 'עברית' }
+});
+```
+
+The widget renders its title, all feature labels, and the language selector in
+the chosen language immediately — no user interaction required.
+
+- **Default**: `'en'` (English) when `defaultLanguage` is omitted.
+- **Built-in codes**: `'en'` (English) and `'he'` (Hebrew, RTL).
+- **Custom languages**: register additional codes at runtime with
+  `registerLanguage()` — see [Adding Languages](#adding-languages).
+
+------------------------------------------------------------------------
+
 ## Features
 
 | Feature | Group | Type | Description |
@@ -322,7 +344,7 @@ Override CSS custom properties on the `.a11y-widget` selector:
   --a11y-active-bg: #e8f0fe;      /* Active item background */
   --a11y-shadow: 0 4px 20px rgba(0,0,0,0.15);
   --a11y-radius: 12px;            /* Panel border radius */
-  --a11y-toggle-size: 56px;       /* Toggle button size */
+  --a11y-toggle-size: 42px;       /* Toggle button size */
 }
 ```
 
