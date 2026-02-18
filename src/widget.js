@@ -21,6 +21,10 @@ const OPEN_MODIFIER = 'a11y-widget--open';
 const RTL_MODIFIER = 'a11y-widget--rtl';
 const ACTIVE_MODIFIER = 'a11y-widget__item--active';
 
+// Language codes ordered by total number of speakers (native + L2), most popular first.
+// Unknown codes are appended after these in their original insertion order.
+const LANG_POPULARITY = ['en', 'zh', 'es', 'fr', 'ar', 'ru', 'pt', 'de', 'ja', 'he'];
+
 // ---------------------------------------------------------------------------
 // Icons used by the widget chrome (toggle button, close button, controls)
 // ---------------------------------------------------------------------------
@@ -400,10 +404,17 @@ Widget.prototype._buildLanguageSection = function (parent) {
     'tabindex': '-1',
   });
 
-  // Determine which languages to offer
-  var langs = this._languages
+  // Determine which languages to offer, sorted by global popularity
+  var langs = (this._languages
     ? Object.keys(this._languages)
-    : getAvailableLanguages();
+    : getAvailableLanguages()
+  ).slice().sort(function (a, b) {
+    var ai = LANG_POPULARITY.indexOf(a);
+    var bi = LANG_POPULARITY.indexOf(b);
+    if (ai === -1) ai = LANG_POPULARITY.length;
+    if (bi === -1) bi = LANG_POPULARITY.length;
+    return ai - bi;
+  });
 
   var select = createElement('select', 'a11y-widget__lang-select', {
     'aria-label': this._t('language'),
