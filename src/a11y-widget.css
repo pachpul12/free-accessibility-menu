@@ -19,7 +19,7 @@
   --a11y-active-bg: #e8f0fe;
   --a11y-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   --a11y-radius: 12px;
-  --a11y-toggle-size: 56px;
+  --a11y-toggle-size: 42px;
   --a11y-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     sans-serif;
 }
@@ -61,12 +61,11 @@
   padding: 0;
   border: none;
   border-radius: 50%;
-  background-color: transparent;
+  background-color: #ffffff;
   color: #ffffff;
   cursor: pointer;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
-  transition: transform 0.2s ease, box-shadow 0.2s ease,
-    background-color 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   position: relative;
 }
 
@@ -85,8 +84,8 @@
 }
 
 .a11y-widget__toggle img {
-  width: 28px;
-  height: 28px;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
   border-radius: 50%;
 }
