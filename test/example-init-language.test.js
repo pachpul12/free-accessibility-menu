@@ -120,7 +120,18 @@ describe('examples/index-init-language.html: HTML structure', () => {
 describe('examples/index-init-language.html: widget initialization in Hebrew', () => {
   var EXAMPLE_OPTIONS = {
     defaultLanguage: 'he',
-    languages: { en: 'English', he: '\u05E2\u05D1\u05E8\u05D9\u05EA' },
+    languages: {
+      en: 'English',
+      he: '\u05E2\u05D1\u05E8\u05D9\u05EA',
+      zh: '\u4E2D\u6587',
+      es: 'Espa\u00F1ol',
+      ar: '\u0627\u0644\u0639\u0631\u0628\u064A\u0629',
+      pt: 'Portugu\u00EAs',
+      fr: 'Fran\u00E7ais',
+      de: 'Deutsch',
+      ja: '\u65E5\u672C\u8A9E',
+      ru: '\u0420\u0443\u0441\u0441\u043A\u0438\u0439',
+    },
   };
 
   test('widget initializes with defaultLanguage "he" without throwing', () => {
@@ -147,13 +158,14 @@ describe('examples/index-init-language.html: widget initialization in Hebrew', (
     expect(sel.value).toBe('he');
   });
 
-  test('both configured languages appear as options in the select', () => {
+  test('all configured languages appear as options in the select', () => {
     var w = AccessibilityWidget.init(EXAMPLE_OPTIONS);
     w.openMenu();
     var sel = document.querySelector('.a11y-widget__lang-select');
     var values = Array.from(sel.options).map(function (o) { return o.value; });
-    expect(values).toContain('en');
-    expect(values).toContain('he');
+    ['en', 'he', 'zh', 'es', 'ar', 'pt', 'fr', 'de', 'ja', 'ru'].forEach(function (code) {
+      expect(values).toContain(code);
+    });
   });
 
   test('menu title is displayed in Hebrew', () => {
@@ -191,7 +203,18 @@ describe('examples/index-init-language.html: axe-core accessibility', () => {
   var AXE_OPTIONS = { rules: { region: { enabled: false } } };
   var EXAMPLE_OPTIONS = {
     defaultLanguage: 'he',
-    languages: { en: 'English', he: '\u05E2\u05D1\u05E8\u05D9\u05EA' },
+    languages: {
+      en: 'English',
+      he: '\u05E2\u05D1\u05E8\u05D9\u05EA',
+      zh: '\u4E2D\u6587',
+      es: 'Espa\u00F1ol',
+      ar: '\u0627\u0644\u0639\u0631\u0628\u064A\u0629',
+      pt: 'Portugu\u00EAs',
+      fr: 'Fran\u00E7ais',
+      de: 'Deutsch',
+      ja: '\u65E5\u672C\u8A9E',
+      ru: '\u0420\u0443\u0441\u0441\u043A\u0438\u0439',
+    },
   };
 
   beforeEach(() => {
