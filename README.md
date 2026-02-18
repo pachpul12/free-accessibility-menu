@@ -57,7 +57,7 @@ the entire website.
 -   14 optional interface adjustment features
 -   Zero runtime dependencies (vanilla JS + CSS)
 -   Keyboard operable menu
--   RTL and i18n support (English and Hebrew included)
+-   RTL and i18n support (10 built-in languages: English, Hebrew, Chinese, Spanish, Arabic, Portuguese, French, German, Japanese, Russian)
 -   LocalStorage-based persistence
 -   No tracking, no cookies, no external calls
 -   Automated accessibility testing included in the test suite
@@ -206,7 +206,21 @@ The widget renders its title, all feature labels, and the language selector in
 the chosen language immediately — no user interaction required.
 
 - **Default**: `'en'` (English) when `defaultLanguage` is omitted.
-- **Built-in codes**: `'en'` (English) and `'he'` (Hebrew, RTL).
+- **Built-in codes**:
+
+  | Code | Language    | Direction |
+  |------|-------------|-----------|
+  | `en` | English     | LTR       |
+  | `he` | Hebrew      | RTL       |
+  | `zh` | Chinese     | LTR       |
+  | `es` | Spanish     | LTR       |
+  | `ar` | Arabic      | RTL       |
+  | `pt` | Portuguese  | LTR       |
+  | `fr` | French      | LTR       |
+  | `de` | German      | LTR       |
+  | `ja` | Japanese    | LTR       |
+  | `ru` | Russian     | LTR       |
+
 - **Custom languages**: register additional codes at runtime with
   `registerLanguage()` — see [Adding Languages](#adding-languages).
 
@@ -308,21 +322,22 @@ Removes the widget from the DOM, detaches all event listeners, and restores the 
 
 ## Adding Languages
 
-Register new languages at runtime using the i18n API:
+The 10 languages listed above are built-in. Register additional languages at
+runtime using the i18n API:
 
 ```js
 import { registerLanguage } from 'free-accessibility-menu/dist/a11y-widget.esm.js';
 
-registerLanguage('fr', {
-  menuTitle: 'Menu d\'accessibilit\u00e9',
-  highContrast: 'Contraste \u00e9lev\u00e9',
-  darkMode: 'Mode sombre',
-  fontSize: 'Taille de police',
+registerLanguage('it', {
+  menuTitle: 'Menu di accessibilit\u00e0',
+  highContrast: 'Alto contrasto',
+  darkMode: 'Modalit\u00e0 scura',
+  fontSize: 'Dimensione carattere',
   // ... add all keys (see src/i18n.js for the full list)
-  resetAll: 'R\u00e9initialiser',
-  closeMenu: 'Fermer le menu',
-  language: 'Langue',
-  disclaimer: 'Ce widget ne garantit pas une conformit\u00e9 totale.'
+  resetAll: 'Reimposta tutto',
+  closeMenu: 'Chiudi menu',
+  language: 'Lingua',
+  disclaimer: 'Questo widget non garantisce la piena conformit\u00e0 all\u2019accessibilit\u00e0.'
 });
 ```
 

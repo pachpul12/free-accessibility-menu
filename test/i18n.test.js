@@ -53,28 +53,43 @@ describe('translations (default export)', () => {
     expect(Array.isArray(translations)).toBe(false);
   });
 
-  test('contains "en" and "he" locales', () => {
-    expect(translations).toHaveProperty('en');
-    expect(translations).toHaveProperty('he');
+  test('contains all 10 built-in locales', () => {
+    ['en', 'he', 'zh', 'es', 'ar', 'pt', 'fr', 'de', 'ja', 'ru'].forEach(function (code) {
+      expect(translations).toHaveProperty(code);
+    });
   });
 
-  test.each(REQUIRED_KEYS)(
-    'English locale includes key "%s"',
-    (key) => {
-      expect(translations.en).toHaveProperty(key);
-      expect(typeof translations.en[key]).toBe('string');
-      expect(translations.en[key].length).toBeGreaterThan(0);
+  // Verify every built-in locale has every required key
+  const BUILT_IN_LOCALES = ['en', 'he', 'zh', 'es', 'ar', 'pt', 'fr', 'de', 'ja', 'ru'];
+
+  test.each(BUILT_IN_LOCALES)(
+    '%s locale has all required keys with non-empty strings',
+    (locale) => {
+      REQUIRED_KEYS.forEach(function (key) {
+        expect(translations[locale]).toHaveProperty(key);
+        expect(typeof translations[locale][key]).toBe('string');
+        expect(translations[locale][key].length).toBeGreaterThan(0);
+      });
     },
   );
 
-  test.each(REQUIRED_KEYS)(
-    'Hebrew locale includes key "%s"',
-    (key) => {
-      expect(translations.he).toHaveProperty(key);
-      expect(typeof translations.he[key]).toBe('string');
-      expect(translations.he[key].length).toBeGreaterThan(0);
-    },
-  );
+  // Spot-check menuTitle for each new built-in locale
+  test('new locale menuTitles match specification', () => {
+    expect(translations.zh.menuTitle).toBe('\u65E0\u969C\u788D\u83DC\u5355');
+    expect(translations.es.menuTitle).toBe('Men\u00FA de accesibilidad');
+    expect(translations.ar.menuTitle).toBe(
+      '\u0642\u0627\u0626\u0645\u0629 \u0625\u0645\u0643\u0627\u0646\u064A\u0629 \u0627\u0644\u0648\u0635\u0648\u0644',
+    );
+    expect(translations.pt.menuTitle).toBe('Menu de acessibilidade');
+    expect(translations.fr.menuTitle).toBe('Menu d\u2019accessibilit\u00E9');
+    expect(translations.de.menuTitle).toBe('Barrierefreiheitsmen\u00FC');
+    expect(translations.ja.menuTitle).toBe(
+      '\u30A2\u30AF\u30BB\u30B7\u30D3\u30EA\u30C6\u30A3\u30E1\u30CB\u30E5\u30FC',
+    );
+    expect(translations.ru.menuTitle).toBe(
+      '\u041C\u0435\u043D\u044E \u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E\u0441\u0442\u0438',
+    );
+  });
 
   // Spot-check exact English values
   test('English values match specification', () => {
@@ -161,15 +176,15 @@ describe('getAvailableLanguages()', () => {
     expect(Array.isArray(getAvailableLanguages())).toBe(true);
   });
 
-  test('contains "en" and "he" by default', () => {
+  test('contains all 10 built-in language codes', () => {
     const langs = getAvailableLanguages();
-    expect(langs).toContain('en');
-    expect(langs).toContain('he');
+    ['en', 'he', 'zh', 'es', 'ar', 'pt', 'fr', 'de', 'ja', 'ru'].forEach(function (code) {
+      expect(langs).toContain(code);
+    });
   });
 
-  test('length matches the number of registered languages', () => {
-    // At baseline there are exactly 2 built-in languages
-    expect(getAvailableLanguages().length).toBeGreaterThanOrEqual(2);
+  test('length is at least 10 (all built-in languages)', () => {
+    expect(getAvailableLanguages().length).toBeGreaterThanOrEqual(10);
   });
 });
 
@@ -224,12 +239,13 @@ describe('registerLanguage(code, translations)', () => {
     expect(getTranslation('fr', 'resetAll')).toBe('R\u00e9initialiser tout');
   });
 
-  test('falls back to English for keys missing in the new language', () => {
-    registerLanguage('de', { menuTitle: 'Barrierefreiheits-Men\u00fc' });
+  test('falls back to English for keys missing in a partial registration', () => {
+    // Use a non-built-in code so the fallback path is exercised cleanly
+    registerLanguage('xx', { menuTitle: 'Test Menu' });
 
-    expect(getTranslation('de', 'menuTitle')).toBe('Barrierefreiheits-Men\u00fc');
-    // 'resetAll' was not provided for 'de', so English fallback is used
-    expect(getTranslation('de', 'resetAll')).toBe('Reset All');
+    expect(getTranslation('xx', 'menuTitle')).toBe('Test Menu');
+    // 'resetAll' was not provided for 'xx', so English fallback is used
+    expect(getTranslation('xx', 'resetAll')).toBe('Reset All');
   });
 
   test('merges into an existing language without losing prior keys', () => {
