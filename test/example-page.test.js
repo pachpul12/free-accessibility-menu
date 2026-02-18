@@ -143,7 +143,18 @@ describe('examples/index.html: HTML structure', () => {
 
 describe('examples/index.html: widget initialization', () => {
   // These are the exact options used in examples/index.html
-  var EXAMPLE_LANGUAGES = { en: 'English', he: '\u05E2\u05D1\u05E8\u05D9\u05EA' };
+  var EXAMPLE_LANGUAGES = {
+    en: 'English',
+    he: '\u05E2\u05D1\u05E8\u05D9\u05EA',
+    zh: '\u4E2D\u6587',
+    es: 'Espa\u00F1ol',
+    ar: '\u0627\u0644\u0639\u0631\u0628\u064A\u0629',
+    pt: 'Portugu\u00EAs',
+    fr: 'Fran\u00E7ais',
+    de: 'Deutsch',
+    ja: '\u65E5\u672C\u8A9E',
+    ru: '\u0420\u0443\u0441\u0441\u043A\u0438\u0439',
+  };
 
   test('widget initializes with example options without throwing', () => {
     expect(function () {
