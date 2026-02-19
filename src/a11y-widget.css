@@ -866,24 +866,23 @@ body.a11y-invert-colors .a11y-widget {
    Font Size Scaling (body.a11y-font-1 through body.a11y-font-5)
    -------------------------------------------------------------------------- */
 
-body.a11y-font-1 {
-  font-size: 112.5% !important;
-}
+html.a11y-font-1 { font-size: 112.5% !important; }
+html.a11y-font-2 { font-size: 125%   !important; }
+html.a11y-font-3 { font-size: 137.5% !important; }
+html.a11y-font-4 { font-size: 150%   !important; }
+html.a11y-font-5 { font-size: 175%   !important; }
 
-body.a11y-font-2 {
-  font-size: 125% !important;
-}
-
-body.a11y-font-3 {
-  font-size: 137.5% !important;
-}
-
-body.a11y-font-4 {
-  font-size: 150% !important;
-}
-
-body.a11y-font-5 {
-  font-size: 175% !important;
+/*
+ * Re-anchor body to the scaled html font-size (1em = html's new size).
+ * This ensures content using em/% units also scales, even on sites that
+ * hard-code body { font-size: Npx }.
+ */
+html.a11y-font-1 body,
+html.a11y-font-2 body,
+html.a11y-font-3 body,
+html.a11y-font-4 body,
+html.a11y-font-5 body {
+  font-size: 1em !important;
 }
 
 /* ==========================================================================

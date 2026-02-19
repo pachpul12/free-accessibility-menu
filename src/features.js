@@ -226,7 +226,9 @@ function removeFontSizeClasses() {
     return;
   }
   for (let i = feature.min; i <= feature.max; i++) {
-    document.body.classList.remove(feature.cssClass + '-' + i);
+    const cls = feature.cssClass + '-' + i;
+    document.body.classList.remove(cls);
+    document.documentElement.classList.remove(cls);
   }
 }
 
@@ -268,7 +270,9 @@ export function applyFeature(featureId, value) {
     // Apply the new level class only when value is greater than the minimum
     const numericValue = Number(value);
     if (numericValue > feature.min) {
-      document.body.classList.add(feature.cssClass + '-' + numericValue);
+      const cls = feature.cssClass + '-' + numericValue;
+      document.body.classList.add(cls);
+      document.documentElement.classList.add(cls);
     }
     return;
   }
