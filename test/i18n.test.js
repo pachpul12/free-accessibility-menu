@@ -54,14 +54,22 @@ describe('translations (default export)', () => {
     expect(Array.isArray(translations)).toBe(false);
   });
 
-  test('contains all 10 built-in locales', () => {
-    ['en', 'he', 'zh', 'es', 'ar', 'pt', 'fr', 'de', 'ja', 'ru'].forEach(function (code) {
+  test('contains all 40 built-in locales', () => {
+    ['en', 'he', 'zh', 'es', 'ar', 'pt', 'fr', 'de', 'ja', 'ru',
+     'hi', 'bn', 'pa', 'id', 'ur', 'tr', 'vi', 'ko', 'it', 'fa',
+     'th', 'ta', 'mr', 'te', 'gu', 'pl', 'ms', 'nl', 'tl', 'uk',
+     'sw', 'sv', 'da', 'ro', 'el', 'cs', 'hu', 'kk', 'sr', 'no'].forEach(function (code) {
       expect(translations).toHaveProperty(code);
     });
   });
 
   // Verify every built-in locale has every required key
-  const BUILT_IN_LOCALES = ['en', 'he', 'zh', 'es', 'ar', 'pt', 'fr', 'de', 'ja', 'ru'];
+  const BUILT_IN_LOCALES = [
+    'en', 'he', 'zh', 'es', 'ar', 'pt', 'fr', 'de', 'ja', 'ru',
+    'hi', 'bn', 'pa', 'id', 'ur', 'tr', 'vi', 'ko', 'it', 'fa',
+    'th', 'ta', 'mr', 'te', 'gu', 'pl', 'ms', 'nl', 'tl', 'uk',
+    'sw', 'sv', 'da', 'ro', 'el', 'cs', 'hu', 'kk', 'sr', 'no',
+  ];
 
   test.each(BUILT_IN_LOCALES)(
     '%s locale has all required keys with non-empty strings',
@@ -177,15 +185,18 @@ describe('getAvailableLanguages()', () => {
     expect(Array.isArray(getAvailableLanguages())).toBe(true);
   });
 
-  test('contains all 10 built-in language codes', () => {
+  test('contains all 40 built-in language codes', () => {
     const langs = getAvailableLanguages();
-    ['en', 'he', 'zh', 'es', 'ar', 'pt', 'fr', 'de', 'ja', 'ru'].forEach(function (code) {
+    ['en', 'he', 'zh', 'es', 'ar', 'pt', 'fr', 'de', 'ja', 'ru',
+     'hi', 'bn', 'pa', 'id', 'ur', 'tr', 'vi', 'ko', 'it', 'fa',
+     'th', 'ta', 'mr', 'te', 'gu', 'pl', 'ms', 'nl', 'tl', 'uk',
+     'sw', 'sv', 'da', 'ro', 'el', 'cs', 'hu', 'kk', 'sr', 'no'].forEach(function (code) {
       expect(langs).toContain(code);
     });
   });
 
-  test('length is at least 10 (all built-in languages)', () => {
-    expect(getAvailableLanguages().length).toBeGreaterThanOrEqual(10);
+  test('length is at least 40 (all built-in languages)', () => {
+    expect(getAvailableLanguages().length).toBeGreaterThanOrEqual(40);
   });
 });
 

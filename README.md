@@ -57,7 +57,7 @@ the entire website.
 -   14 optional interface adjustment features
 -   Zero runtime dependencies (vanilla JS + CSS)
 -   Keyboard operable menu
--   RTL and i18n support (10 built-in languages: English, Hebrew, Chinese, Spanish, Arabic, Portuguese, French, German, Japanese, Russian)
+-   RTL and i18n support (40 built-in languages: English, Hebrew, Chinese, Spanish, Arabic, Portuguese, French, German, Japanese, Russian, Hindi, Bengali, Punjabi, Indonesian, Urdu, Turkish, Vietnamese, Korean, Italian, Persian, Thai, Tamil, Marathi, Telugu, Gujarati, Polish, Malay, Dutch, Filipino, Ukrainian, Swahili, Swedish, Danish, Romanian, Greek, Czech, Hungarian, Kazakh, Serbian, Norwegian)
 -   LocalStorage-based persistence
 -   No tracking, no cookies, no external calls
 -   Automated accessibility testing included in the test suite
@@ -192,18 +192,48 @@ the chosen language immediately — no user interaction required.
 - **Default**: `'en'` (English) when `defaultLanguage` is omitted.
 - **Built-in codes**:
 
-  | Code | Language    | Direction |
-  |------|-------------|-----------|
-  | `en` | English     | LTR       |
-  | `he` | Hebrew      | RTL       |
-  | `zh` | Chinese     | LTR       |
-  | `es` | Spanish     | LTR       |
-  | `ar` | Arabic      | RTL       |
-  | `pt` | Portuguese  | LTR       |
-  | `fr` | French      | LTR       |
-  | `de` | German      | LTR       |
-  | `ja` | Japanese    | LTR       |
-  | `ru` | Russian     | LTR       |
+  | Code | Language          | Direction |
+  |------|-------------------|-----------|
+  | `en` | English           | LTR       |
+  | `zh` | Chinese           | LTR       |
+  | `hi` | Hindi             | LTR       |
+  | `es` | Spanish           | LTR       |
+  | `fr` | French            | LTR       |
+  | `ar` | Arabic            | RTL       |
+  | `bn` | Bengali           | LTR       |
+  | `ru` | Russian           | LTR       |
+  | `pt` | Portuguese        | LTR       |
+  | `ur` | Urdu              | RTL       |
+  | `id` | Indonesian        | LTR       |
+  | `de` | German            | LTR       |
+  | `pa` | Punjabi           | LTR       |
+  | `ja` | Japanese          | LTR       |
+  | `mr` | Marathi           | LTR       |
+  | `te` | Telugu            | LTR       |
+  | `tl` | Filipino/Tagalog  | LTR       |
+  | `vi` | Vietnamese        | LTR       |
+  | `ms` | Malay             | LTR       |
+  | `ko` | Korean            | LTR       |
+  | `tr` | Turkish           | LTR       |
+  | `sw` | Swahili           | LTR       |
+  | `ta` | Tamil             | LTR       |
+  | `fa` | Persian/Farsi     | RTL       |
+  | `it` | Italian           | LTR       |
+  | `th` | Thai              | LTR       |
+  | `gu` | Gujarati          | LTR       |
+  | `pl` | Polish            | LTR       |
+  | `uk` | Ukrainian         | LTR       |
+  | `nl` | Dutch             | LTR       |
+  | `ro` | Romanian          | LTR       |
+  | `el` | Greek             | LTR       |
+  | `hu` | Hungarian         | LTR       |
+  | `sv` | Swedish           | LTR       |
+  | `cs` | Czech             | LTR       |
+  | `sr` | Serbian           | LTR       |
+  | `kk` | Kazakh            | LTR       |
+  | `he` | Hebrew            | RTL       |
+  | `da` | Danish            | LTR       |
+  | `no` | Norwegian         | LTR       |
 
 - **Custom languages**: register additional codes at runtime with
   `registerLanguage()` — see [Adding Languages](#adding-languages).
@@ -304,7 +334,7 @@ Removes the widget from the DOM, detaches all event listeners, and restores the 
 
 ## Adding Languages
 
-The 10 languages listed above are built-in. Register additional languages at
+The 40 languages listed above are built-in. Register additional languages at
 runtime using the i18n API:
 
 ```js
