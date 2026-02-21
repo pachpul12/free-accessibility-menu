@@ -548,43 +548,48 @@
    High Contrast Mode
    -------------------------------------------------------------------------- */
 
-body.a11y-high-contrast {
+/*
+ * Force white backgrounds and black text on every page element.
+ * Targeting all elements (not just specific tag names) ensures that
+ * coloured cards, section headers, and custom components are also
+ * overridden — a previous approach only changed body and named tags,
+ * leaving site-specific background-colors untouched.
+ */
+body.a11y-high-contrast *:not(.a11y-widget):not(.a11y-widget *) {
   background-color: #ffffff !important;
   color: #000000 !important;
+  border-color: #000000 !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
 }
 
-body.a11y-high-contrast p:not(.a11y-widget p),
-body.a11y-high-contrast span:not(.a11y-widget span),
-body.a11y-high-contrast div:not(.a11y-widget div),
-body.a11y-high-contrast li:not(.a11y-widget li),
-body.a11y-high-contrast h1:not(.a11y-widget h1),
-body.a11y-high-contrast h2:not(.a11y-widget h2),
-body.a11y-high-contrast h3:not(.a11y-widget h3),
-body.a11y-high-contrast h4:not(.a11y-widget h4),
-body.a11y-high-contrast h5:not(.a11y-widget h5),
-body.a11y-high-contrast h6:not(.a11y-widget h6),
-body.a11y-high-contrast td:not(.a11y-widget td),
-body.a11y-high-contrast th:not(.a11y-widget th),
-body.a11y-high-contrast label:not(.a11y-widget label) {
-  color: #000000 !important;
-}
-
-body.a11y-high-contrast a:not(.a11y-widget a) {
-  color: #0000ee !important;
-}
-
-body.a11y-high-contrast
-  img:not(.a11y-widget img):not(.a11y-widget__item-icon img) {
+/* Images / video: keep natural rendering, add a clear border */
+body.a11y-high-contrast img:not(.a11y-widget img),
+body.a11y-high-contrast video:not(.a11y-widget video) {
+  background-color: transparent !important;
   border: 2px solid #000000 !important;
 }
 
-body.a11y-high-contrast button:not(.a11y-widget button),
+/* Links clearly distinguishable */
+body.a11y-high-contrast a:not(.a11y-widget a) {
+  color: #0000ee !important;
+  text-decoration: underline !important;
+}
+
+/* Buttons: inverted (black/white) for maximum affordance */
+body.a11y-high-contrast button:not(.a11y-widget button) {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 2px solid #000000 !important;
+}
+
+/* Form controls */
 body.a11y-high-contrast input:not(.a11y-widget input),
 body.a11y-high-contrast select:not(.a11y-widget select),
 body.a11y-high-contrast textarea:not(.a11y-widget textarea) {
-  border: 2px solid #000000 !important;
   background-color: #ffffff !important;
   color: #000000 !important;
+  border: 2px solid #000000 !important;
 }
 
 /* --------------------------------------------------------------------------
@@ -596,32 +601,27 @@ body.a11y-dark-mode {
   color: #f0f0f0 !important;
 }
 
-body.a11y-dark-mode p:not(.a11y-widget p),
-body.a11y-dark-mode span:not(.a11y-widget span),
-body.a11y-dark-mode div:not(.a11y-widget div),
-body.a11y-dark-mode li:not(.a11y-widget li),
-body.a11y-dark-mode h1:not(.a11y-widget h1),
-body.a11y-dark-mode h2:not(.a11y-widget h2),
-body.a11y-dark-mode h3:not(.a11y-widget h3),
-body.a11y-dark-mode h4:not(.a11y-widget h4),
-body.a11y-dark-mode h5:not(.a11y-widget h5),
-body.a11y-dark-mode h6:not(.a11y-widget h6),
-body.a11y-dark-mode td:not(.a11y-widget td),
-body.a11y-dark-mode th:not(.a11y-widget th),
-body.a11y-dark-mode label:not(.a11y-widget label) {
+/*
+ * Force dark background and light text on every page element.
+ * The previous approach only changed named elements' color but never
+ * overrode background-color on cards/sections/containers — those stayed
+ * white, making dark-mode text invisible against a white background.
+ */
+body.a11y-dark-mode *:not(.a11y-widget):not(.a11y-widget *) {
+  background-color: #1e1e1e !important;
   color: #f0f0f0 !important;
-}
-
-body.a11y-dark-mode table:not(.a11y-widget table),
-body.a11y-dark-mode hr:not(.a11y-widget hr) {
   border-color: #444444 !important;
 }
 
+/* Links remain distinguishable */
 body.a11y-dark-mode a:not(.a11y-widget a) {
   color: #6db3f2 !important;
 }
 
-body.a11y-dark-mode img:not(.a11y-widget img) {
+/* Media: keep natural rendering, just dim slightly */
+body.a11y-dark-mode img:not(.a11y-widget img),
+body.a11y-dark-mode video:not(.a11y-widget video) {
+  background-color: transparent !important;
   opacity: 0.85;
 }
 
@@ -818,20 +818,32 @@ body.a11y-highlight-headings h6:not(.a11y-widget h6) {
    Invert Colors
    -------------------------------------------------------------------------- */
 
+/*
+ * Apply the invert filter to every direct child of body EXCEPT the widget
+ * and the reading-guide bar (both use position:fixed).
+ *
+ * Why not filter body itself?  Applying `filter` to an element creates a new
+ * CSS stacking context, which traps all descendant `position:fixed` elements
+ * inside it.  The widget (and reading guide bar) then scroll with the page
+ * instead of staying fixed, and can disappear off-screen.
+ *
+ * By targeting only `body > *:not(.a11y-widget):not(.a11y-reading-guide-bar)`
+ * we invert the page content while keeping the widget completely outside the
+ * filtered stacking context so `position:fixed` continues to work correctly.
+ */
 body.a11y-invert-colors {
+  background-color: #000000 !important;
+}
+
+body.a11y-invert-colors > *:not(.a11y-widget):not(.a11y-reading-guide-bar) {
   filter: invert(1) hue-rotate(180deg) !important;
 }
 
-body.a11y-invert-colors img:not(.a11y-widget img),
-body.a11y-invert-colors video:not(.a11y-widget video),
-body.a11y-invert-colors picture:not(.a11y-widget picture),
-body.a11y-invert-colors canvas:not(.a11y-widget canvas),
-body.a11y-invert-colors svg:not(.a11y-widget svg):not(.a11y-widget__item-icon svg) {
-  filter: invert(1) hue-rotate(180deg) !important;
-}
-
-/* Keep the widget itself un-inverted */
-body.a11y-invert-colors .a11y-widget {
+/* Re-invert images/media so they keep their natural appearance */
+body.a11y-invert-colors > *:not(.a11y-widget):not(.a11y-reading-guide-bar) img,
+body.a11y-invert-colors > *:not(.a11y-widget):not(.a11y-reading-guide-bar) video,
+body.a11y-invert-colors > *:not(.a11y-widget):not(.a11y-reading-guide-bar) picture,
+body.a11y-invert-colors > *:not(.a11y-widget):not(.a11y-reading-guide-bar) canvas {
   filter: invert(1) hue-rotate(180deg) !important;
 }
 

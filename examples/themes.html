@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accessibility Widget – Themed Test Page</title>
+
+  <!-- Widget stylesheet -->
+  <link rel="stylesheet" href="../dist/a11y-widget.css">
+
+  <!--
+    This page intentionally uses a variety of colour schemes and component
+    patterns to make it easy to visually verify that the three previously
+    broken accessibility features now work correctly:
+
+      1. HIGH CONTRAST  – every card / section / container must go white/black.
+      2. DARK MODE      – every card / section / container must go dark.
+      3. INVERT COLORS  – colours must invert AND the widget must stay in the
+                          bottom-right corner (not scroll off-screen).
+  -->
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 1rem;
+      line-height: 1.6;
+      color: #222222;
+      background-color: #f5f5f5;
+    }
+
+    /* ── Layout ──────────────────────────────────────────────────────────── */
+    .page-header {
+      background-color: #1a56db;
+      color: #ffffff;
+      padding: 0;
+    }
+    .page-header__inner {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .page-header__title { margin: 0; font-size: 1.5rem; }
+    .page-header nav a {
+      color: #c7d9fd;
+      text-decoration: none;
+      margin-left: 20px;
+    }
+    .page-header nav a:hover { color: #ffffff; }
+
+    main { max-width: 1000px; margin: 0 auto; padding: 32px 24px; }
+
+    section { margin-bottom: 48px; }
+    section h2 {
+      font-size: 1.4rem;
+      margin: 0 0 4px;
+    }
+    .section-desc {
+      font-size: 0.85rem;
+      color: #666;
+      margin: 0 0 16px;
+      font-style: italic;
+    }
+
+    /* ── Grid ────────────────────────────────────────────────────────────── */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    /* ── Card base ───────────────────────────────────────────────────────── */
+    .card {
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    }
+    .card__body { padding: 16px; }
+    .card__title { margin: 0 0 8px; font-size: 1rem; font-weight: 700; }
+    .card__text  { margin: 0; font-size: 0.9rem; }
+
+    /* ── Theme 1: Blue over white (matches screenshot site) ─────────────── */
+    .theme-blue-white .card {
+      background-color: #ffffff;
+      color: #222222;
+    }
+    .theme-blue-white .card__header {
+      background-color: #1a56db;
+      color: #ffffff;
+      padding: 12px 16px;
+      font-weight: 700;
+    }
+
+    /* ── Theme 2: Coloured cards (green, orange, purple) ────────────────── */
+    .theme-coloured .card--green  { background-color: #d1fae5; color: #065f46; }
+    .theme-coloured .card--orange { background-color: #ffedd5; color: #92400e; }
+    .theme-coloured .card--purple { background-color: #ede9fe; color: #4c1d95; }
+    .theme-coloured .card--red    { background-color: #fee2e2; color: #991b1b; }
+
+    /* ── Theme 3: Dark/gradient cards ───────────────────────────────────── */
+    .theme-dark .card {
+      background-color: #1e293b;
+      color: #e2e8f0;
+    }
+    .theme-dark .card--alt { background-color: #0f172a; color: #94a3b8; }
+
+    /* ── Theme 4: Image-rich (for hide-images / invert-colors testing) ──── */
+    .image-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .image-card {
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    }
+    .image-card__cover {
+      width: 100%;
+      aspect-ratio: 4/3;
+      object-fit: cover;
+      display: block;
+    }
+    .image-card__bg {
+      width: 100%;
+      aspect-ratio: 4/3;
+      background-size: cover;
+      background-position: center;
+    }
+    .image-card__caption {
+      background: #ffffff;
+      padding: 10px 12px;
+      font-size: 0.85rem;
+    }
+
+    /* ── Theme 5: Form section ───────────────────────────────────────────── */
+    .form-section {
+      background-color: #ffffff;
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      max-width: 480px;
+    }
+    .form-row { margin-bottom: 16px; }
+    .form-row label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 4px;
+      font-size: 0.9rem;
+    }
+    .form-row input,
+    .form-row select,
+    .form-row textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-family: inherit;
+    }
+    .form-row textarea { height: 80px; resize: vertical; }
+    .form-row input:focus,
+    .form-row select:focus,
+    .form-row textarea:focus { outline: 2px solid #1a56db; }
+
+    .btn-primary {
+      background-color: #1a56db;
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 20px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-primary:hover { background-color: #1345b7; }
+
+    /* ── Inline-text section ─────────────────────────────────────────────── */
+    .prose {
+      background-color: #ffffff;
+      border-radius: 10px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .prose h3 { color: #1a56db; margin: 0 0 12px; }
+    .prose p  { margin: 0 0 12px; color: #374151; }
+    .prose a  { color: #1a56db; }
+    .prose blockquote {
+      border-left: 4px solid #1a56db;
+      margin: 16px 0;
+      padding: 8px 16px;
+      background-color: #eff6ff;
+      color: #1e40af;
+    }
+
+    /* ── Footer ──────────────────────────────────────────────────────────── */
+    .page-footer {
+      background-color: #111827;
+      color: #9ca3af;
+      text-align: center;
+      padding: 24px;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- Header                                                                   -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<header class="page-header" role="banner">
+  <div class="page-header__inner">
+    <h1 class="page-header__title">Themes Test Page</h1>
+    <nav aria-label="Site navigation">
+      <a href="#blue-white">Blue/White</a>
+      <a href="#coloured">Coloured</a>
+      <a href="#dark">Dark</a>
+      <a href="#images">Images</a>
+      <a href="#form">Form</a>
+      <a href="#prose">Text</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- Main                                                                     -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<main>
+
+  <!-- ── Section 1: Blue over white ──────────────────────────────────── -->
+  <section id="blue-white" aria-labelledby="s1-title">
+    <h2 id="s1-title">Theme 1: Blue header on white card</h2>
+    <p class="section-desc">
+      Matches the screenshot site (i-will.co.il). High Contrast and Dark Mode
+      must override the blue headers and white card backgrounds.
+    </p>
+    <div class="card-grid theme-blue-white">
+      <div class="card">
+        <div class="card__header">Article Title One</div>
+        <div class="card__body">
+          <p class="card__text">White background with blue header. High Contrast should make this black/white. Dark Mode should darken the white background.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card__header">Article Title Two</div>
+        <div class="card__body">
+          <p class="card__text">Another white card with a blue section header above. The dark background of the header must also be overridden.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card__header">Article Title Three</div>
+        <div class="card__body">
+          <p class="card__text">A third example card. In dark mode, this white background should become dark (#1e1e1e), not stay white.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card__header">Article Title Four</div>
+        <div class="card__body">
+          <p class="card__text">Four cards in total. All should be consistently overridden by both high-contrast and dark-mode features.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Section 2: Coloured cards ───────────────────────────────────── -->
+  <section id="coloured" aria-labelledby="s2-title">
+    <h2 id="s2-title">Theme 2: Coloured cards</h2>
+    <p class="section-desc">
+      Cards with green, orange, purple, and red tinted backgrounds.
+      High Contrast must force all to white; Dark Mode must force all to dark.
+    </p>
+    <div class="card-grid theme-coloured">
+      <article class="card card--green">
+        <div class="card__body">
+          <h3 class="card__title">Success Card</h3>
+          <p class="card__text">Green tinted background (#d1fae5). Should go white in high contrast, dark in dark mode.</p>
+        </div>
+      </article>
+      <article class="card card--orange">
+        <div class="card__body">
+          <h3 class="card__title">Warning Card</h3>
+          <p class="card__text">Orange tinted background (#ffedd5). Should go white in high contrast, dark in dark mode.</p>
+        </div>
+      </article>
+      <article class="card card--purple">
+        <div class="card__body">
+          <h3 class="card__title">Info Card</h3>
+          <p class="card__text">Purple tinted background (#ede9fe). Should go white in high contrast, dark in dark mode.</p>
+        </div>
+      </article>
+      <article class="card card--red">
+        <div class="card__body">
+          <h3 class="card__title">Error Card</h3>
+          <p class="card__text">Red tinted background (#fee2e2). Should go white in high contrast, dark in dark mode.</p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ── Section 3: Dark/gradient cards ──────────────────────────────── -->
+  <section id="dark" aria-labelledby="s3-title">
+    <h2 id="s3-title">Theme 3: Dark cards</h2>
+    <p class="section-desc">
+      Cards that are already dark (#1e293b / #0f172a). High Contrast should
+      invert them to white. Dark Mode should keep them dark-ish (the page
+      dark mode colour matches one of these cards).
+    </p>
+    <div class="card-grid theme-dark">
+      <article class="card">
+        <div class="card__body">
+          <h3 class="card__title">Slate Card</h3>
+          <p class="card__text">Dark slate background (#1e293b) with light text. High Contrast must force this to white/black.</p>
+        </div>
+      </article>
+      <article class="card card--alt">
+        <div class="card__body">
+          <h3 class="card__title">Navy Card</h3>
+          <p class="card__text">Very dark navy (#0f172a). Both features should consistently override this.</p>
+        </div>
+      </article>
+      <article class="card">
+        <div class="card__body">
+          <h3 class="card__title">Another Slate</h3>
+          <p class="card__text">Second slate card for visual consistency check.</p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ── Section 4: Image-rich (for invert + hide-images) ────────────── -->
+  <section id="images" aria-labelledby="s4-title">
+    <h2 id="s4-title">Theme 4: Image-rich content</h2>
+    <p class="section-desc">
+      Useful for testing Hide Images and Invert Colors.
+      Invert Colors must keep the widget pinned at bottom-right — it must not
+      scroll off-screen or disappear when this feature is active.
+    </p>
+    <div class="image-grid">
+      <div class="image-card">
+        <img
+          class="image-card__cover"
+          src="https://picsum.photos/seed/a11y1/400/300"
+          alt="Abstract blue and teal waves"
+          width="400" height="300"
+          loading="lazy"
+        >
+        <div class="image-card__caption">Photo 1 – blue waves</div>
+      </div>
+      <div class="image-card">
+        <img
+          class="image-card__cover"
+          src="https://picsum.photos/seed/a11y2/400/300"
+          alt="Green forest landscape"
+          width="400" height="300"
+          loading="lazy"
+        >
+        <div class="image-card__caption">Photo 2 – green forest</div>
+      </div>
+      <div class="image-card">
+        <img
+          class="image-card__cover"
+          src="https://picsum.photos/seed/a11y3/400/300"
+          alt="Orange sunset over mountains"
+          width="400" height="300"
+          loading="lazy"
+        >
+        <div class="image-card__caption">Photo 3 – orange sunset</div>
+      </div>
+      <div class="image-card">
+        <!-- Background-image card (also hidden by hide-images feature) -->
+        <div
+          class="image-card__bg"
+          style="background-image: url('https://picsum.photos/seed/a11y4/400/300');"
+          role="img"
+          aria-label="Purple bokeh lights background"
+        ></div>
+        <div class="image-card__caption">Background-image card</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Section 5: Form (for high-contrast form input testing) ───────── -->
+  <section id="form" aria-labelledby="s5-title">
+    <h2 id="s5-title">Theme 5: Form inputs</h2>
+    <p class="section-desc">
+      High Contrast must make borders black and backgrounds white on all form
+      elements. Focus Outline should show a bright orange ring.
+    </p>
+    <div class="form-section">
+      <form aria-label="Sample contact form" onsubmit="return false;">
+        <div class="form-row">
+          <label for="tc-name">Full name</label>
+          <input type="text" id="tc-name" name="name" autocomplete="name" placeholder="Jane Smith">
+        </div>
+        <div class="form-row">
+          <label for="tc-email">Email address</label>
+          <input type="email" id="tc-email" name="email" autocomplete="email" placeholder="jane@example.com">
+        </div>
+        <div class="form-row">
+          <label for="tc-topic">Topic</label>
+          <select id="tc-topic" name="topic">
+            <option value="">Select a topic…</option>
+            <option value="question">Question</option>
+            <option value="feedback">Feedback</option>
+            <option value="bug">Bug report</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="tc-message">Message</label>
+          <textarea id="tc-message" name="message" placeholder="Type your message here…"></textarea>
+        </div>
+        <button class="btn-primary" type="submit">Send message</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ── Section 6: Prose text (font-size, text-spacing, dyslexia font) ─ -->
+  <section id="prose" aria-labelledby="s6-title">
+    <h2 id="s6-title">Theme 6: Long-form text</h2>
+    <p class="section-desc">
+      Useful for Font Size, Text Spacing, Dyslexia Font, Underline Links,
+      and Highlight Headings.
+    </p>
+    <div class="prose">
+      <h3>Why accessible design matters</h3>
+      <p>
+        More than one billion people worldwide live with some form of
+        disability. Accessibility ensures that <a href="#prose">websites and
+        applications</a> can be used by everyone, regardless of their
+        abilities or the assistive technologies they rely on.
+      </p>
+      <blockquote>
+        "The power of the web is in its universality. Access by everyone
+        regardless of disability is an essential aspect."
+        — Tim Berners-Lee
+      </blockquote>
+      <p>
+        Implementing accessibility features doesn't just help users with
+        disabilities — it often improves the experience for all users.
+        Larger text, higher contrast, and reduced animations make interfaces
+        easier to use in many everyday situations.
+      </p>
+      <h3>Key principles</h3>
+      <p>
+        The <a href="#prose">Web Content Accessibility Guidelines (WCAG)</a>
+        define four core principles: content must be Perceivable, Operable,
+        Understandable, and Robust (POUR). Meeting these principles is the
+        foundation of any inclusive web experience.
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- Footer                                                                   -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<footer class="page-footer" role="contentinfo">
+  <p>
+    Accessibility Widget – Themed Test Page &nbsp;·&nbsp;
+    <a href="index.html" style="color:#60a5fa;">← Back to main demo</a>
+  </p>
+</footer>
+
+<!-- Widget UMD bundle -->
+<script src="../dist/index.umd.js"></script>
+<script>
+  AccessibilityWidget.init({
+    defaultLanguage: 'en',
+    position: 'bottom-right',
+  });
+</script>
+</body>
+</html>
