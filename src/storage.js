@@ -96,4 +96,60 @@ export function clearSettings() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Profiles (named presets) persistence
+// ---------------------------------------------------------------------------
+
+/**
+ * Persist a profiles map to localStorage under the given key.
+ *
+ * @param {Record<string, Record<string, *>>} profiles - Map of name → settings.
+ * @param {string} key - The localStorage key to write to.
+ */
+export function saveProfiles(profiles, key) {
+  try {
+    localStorage.setItem(key, JSON.stringify(profiles));
+  } catch (_err) {
+    // Storage unavailable or quota exceeded -- fail silently.
+  }
+}
+
+/**
+ * Load a profiles map from localStorage.
+ *
+ * Returns `null` when no entry exists or when the stored value cannot be
+ * parsed as a valid JSON object.
+ *
+ * @param {string} key - The localStorage key to read from.
+ * @returns {Record<string, Record<string, *>>|null}
+ */
+export function loadProfiles(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw === null) {
+      return null;
+    }
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed;
+    }
+    return null;
+  } catch (_err) {
+    return null;
+  }
+}
+
+/**
+ * Remove the profiles entry from localStorage.
+ *
+ * @param {string} key - The localStorage key to remove.
+ */
+export function clearProfiles(key) {
+  try {
+    localStorage.removeItem(key);
+  } catch (_err) {
+    // Storage unavailable -- fail silently.
+  }
+}
+
 export { STORAGE_KEY };

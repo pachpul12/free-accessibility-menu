@@ -543,6 +543,165 @@ body.a11y-dark-mode .a11y-widget__statement-link {
   color: #6db3f2;
 }
 
+/* --------------------------------------------------------------------------
+   22. Profiles / Presets Section (.a11y-widget__profiles)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__profiles {
+  border-top: 1px solid var(--a11y-border);
+  padding: 6px 0 4px;
+}
+
+.a11y-widget__profiles-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #666666;
+  padding: 2px 12px 6px;
+}
+
+.a11y-widget__profiles-save {
+  display: flex;
+  gap: 6px;
+  padding: 0 12px 8px;
+}
+
+.a11y-widget__profiles-input {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--a11y-border);
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--a11y-text);
+  background-color: var(--a11y-bg);
+  outline: none;
+}
+
+.a11y-widget__profiles-input:focus {
+  border-color: var(--a11y-primary);
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.15);
+}
+
+.a11y-widget__profiles-save-btn {
+  flex-shrink: 0;
+  height: 30px;
+  padding: 0 10px;
+  background-color: var(--a11y-primary);
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s;
+}
+
+.a11y-widget__profiles-save-btn:hover {
+  background-color: var(--a11y-primary-hover);
+}
+
+.a11y-widget__profiles-save-btn:focus-visible {
+  outline: 2px solid var(--a11y-primary);
+  outline-offset: 2px;
+}
+
+.a11y-widget__profiles-list {
+  min-height: 0;
+}
+
+.a11y-widget__profiles-empty {
+  font-size: 12px;
+  color: #888888;
+  padding: 0 12px 4px;
+  margin: 0;
+  font-style: italic;
+}
+
+.a11y-widget__profiles-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 12px;
+}
+
+.a11y-widget__profiles-item-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.a11y-widget__profiles-item-btns {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.a11y-widget__profiles-load-btn,
+.a11y-widget__profiles-delete-btn {
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid;
+  background-color: transparent;
+  transition: background-color 0.1s;
+}
+
+.a11y-widget__profiles-load-btn {
+  border-color: var(--a11y-primary);
+  color: var(--a11y-primary);
+}
+
+.a11y-widget__profiles-load-btn:hover {
+  background-color: var(--a11y-active-bg);
+}
+
+.a11y-widget__profiles-delete-btn {
+  border-color: #d93025;
+  color: #d93025;
+}
+
+.a11y-widget__profiles-delete-btn:hover {
+  background-color: rgba(217, 48, 37, 0.08);
+}
+
+.a11y-widget__profiles-load-btn:focus-visible,
+.a11y-widget__profiles-delete-btn:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* Dark mode overrides */
+body.a11y-dark-mode .a11y-widget__profiles {
+  border-color: #444444;
+}
+
+body.a11y-dark-mode .a11y-widget__profiles-title {
+  color: #aaaaaa;
+}
+
+body.a11y-dark-mode .a11y-widget__profiles-input {
+  background-color: #2a2a2a;
+  border-color: #555555;
+  color: var(--a11y-text-dark);
+}
+
+body.a11y-dark-mode .a11y-widget__profiles-empty {
+  color: #666666;
+}
+
 /* ==========================================================================
    MODIFIERS
    ========================================================================== */

@@ -122,8 +122,8 @@ afterEach(() => {
 // ===========================================================================
 
 describe('Initialization & API', () => {
-  test('AccessibilityWidget.version is "2.0.0"', () => {
-    expect(AccessibilityWidget.version).toBe('2.0.0');
+  test('AccessibilityWidget.version is "2.1.0"', () => {
+    expect(AccessibilityWidget.version).toBe('2.1.0');
   });
 
   test('init() returns a widget instance', () => {
@@ -2259,5 +2259,301 @@ describe('Zoom Lock Warning', () => {
     AccessibilityWidget.init();
     expect(spy).toHaveBeenCalledWith(expect.stringContaining('[AccessibilityWidget]'));
     spy.mockRestore();
+  });
+});
+
+// ===========================================================================
+// 27. Profiles / Presets System
+// ===========================================================================
+
+describe('Profiles / Presets System', () => {
+  var PROFILES_KEY = 'a11yWidgetSettings:profiles';
+
+  afterEach(() => {
+    localStorage.removeItem(PROFILES_KEY);
+  });
+
+  // ── API presence ──────────────────────────────────────────────────────────
+
+  test('widget exposes saveProfile, loadProfile, deleteProfile, getProfiles', () => {
+    var w = AccessibilityWidget.init();
+    expect(typeof w.saveProfile).toBe('function');
+    expect(typeof w.loadProfile).toBe('function');
+    expect(typeof w.deleteProfile).toBe('function');
+    expect(typeof w.getProfiles).toBe('function');
+  });
+
+  // ── getProfiles ───────────────────────────────────────────────────────────
+
+  test('getProfiles() returns empty array when nothing saved', () => {
+    var w = AccessibilityWidget.init();
+    expect(w.getProfiles()).toEqual([]);
+  });
+
+  test('getProfiles() returns sorted array of saved profile names', () => {
+    var w = AccessibilityWidget.init();
+    w.saveProfile('Zebra');
+    w.saveProfile('Apple');
+    w.saveProfile('Mango');
+    expect(w.getProfiles()).toEqual(['Apple', 'Mango', 'Zebra']);
+  });
+
+  // ── saveProfile ───────────────────────────────────────────────────────────
+
+  test('saveProfile() persists current settings to localStorage', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('highContrast', true);
+    w.saveProfile('My settings');
+
+    var stored = JSON.parse(localStorage.getItem(PROFILES_KEY));
+    expect(stored['My settings']).toBeDefined();
+    expect(stored['My settings'].highContrast).toBe(true);
+  });
+
+  test('saveProfile() with same name overwrites previous', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('darkMode', true);
+    w.saveProfile('Theme');
+
+    w.setFeature('darkMode', false);
+    w.setFeature('highContrast', true);
+    w.saveProfile('Theme');
+
+    var stored = JSON.parse(localStorage.getItem(PROFILES_KEY));
+    expect(stored['Theme'].highContrast).toBe(true);
+    expect(stored['Theme'].darkMode).toBe(false);
+  });
+
+  test('saveProfile() with empty string is a no-op', () => {
+    var w = AccessibilityWidget.init();
+    w.saveProfile('');
+    expect(w.getProfiles()).toHaveLength(0);
+  });
+
+  test('saveProfile() with whitespace-only string is a no-op', () => {
+    var w = AccessibilityWidget.init();
+    w.saveProfile('   ');
+    expect(w.getProfiles()).toHaveLength(0);
+  });
+
+  test('saveProfile() trims leading and trailing whitespace', () => {
+    var w = AccessibilityWidget.init();
+    w.saveProfile('  My Profile  ');
+    expect(w.getProfiles()).toContain('My Profile');
+    expect(w.getProfiles()).not.toContain('  My Profile  ');
+  });
+
+  test('saveProfile() truncates names longer than 40 characters', () => {
+    var w = AccessibilityWidget.init();
+    var longName = 'A'.repeat(50);
+    w.saveProfile(longName);
+    var names = w.getProfiles();
+    expect(names).toHaveLength(1);
+    expect(names[0]).toHaveLength(40);
+  });
+
+  test('saveProfile() emits a11y:profilesave CustomEvent', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('darkMode', true);
+    var received = null;
+    var handler = function (e) { received = e.detail; };
+    window.addEventListener('a11y:profilesave', handler);
+    w.saveProfile('My profile');
+    window.removeEventListener('a11y:profilesave', handler);
+
+    expect(received).not.toBeNull();
+    expect(received.name).toBe('My profile');
+    expect(received.settings.darkMode).toBe(true);
+  });
+
+  // ── loadProfile ───────────────────────────────────────────────────────────
+
+  test('loadProfile() applies the saved settings', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('highContrast', true);
+    w.setFeature('fontSize', 3);
+    w.saveProfile('Reading');
+
+    // Reset to defaults then load
+    w.resetAll();
+    expect(w.getSettings().highContrast).toBe(false);
+    expect(w.getSettings().fontSize).toBe(0);
+
+    w.loadProfile('Reading');
+    expect(w.getSettings().highContrast).toBe(true);
+    expect(w.getSettings().fontSize).toBe(3);
+  });
+
+  test('loadProfile() with unknown name is a no-op', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('darkMode', true);
+    w.loadProfile('nonexistent');
+    expect(w.getSettings().darkMode).toBe(true); // unchanged
+  });
+
+  test('loadProfile() emits a11y:profileload CustomEvent', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('darkMode', true);
+    w.saveProfile('Dark');
+
+    var received = null;
+    var handler = function (e) { received = e.detail; };
+    window.addEventListener('a11y:profileload', handler);
+    w.loadProfile('Dark');
+    window.removeEventListener('a11y:profileload', handler);
+
+    expect(received).not.toBeNull();
+    expect(received.name).toBe('Dark');
+    expect(received.settings.darkMode).toBe(true);
+  });
+
+  // ── deleteProfile ─────────────────────────────────────────────────────────
+
+  test('deleteProfile() removes the profile from storage', () => {
+    var w = AccessibilityWidget.init();
+    w.saveProfile('Temp');
+    expect(w.getProfiles()).toContain('Temp');
+
+    w.deleteProfile('Temp');
+    expect(w.getProfiles()).not.toContain('Temp');
+  });
+
+  test('deleteProfile() with unknown name is a no-op', () => {
+    var w = AccessibilityWidget.init();
+    w.saveProfile('Keep');
+    w.deleteProfile('nonexistent');
+    expect(w.getProfiles()).toContain('Keep');
+  });
+
+  test('deleteProfile() emits a11y:profiledelete CustomEvent', () => {
+    var w = AccessibilityWidget.init();
+    w.saveProfile('Bye');
+
+    var received = null;
+    var handler = function (e) { received = e.detail; };
+    window.addEventListener('a11y:profiledelete', handler);
+    w.deleteProfile('Bye');
+    window.removeEventListener('a11y:profiledelete', handler);
+
+    expect(received).not.toBeNull();
+    expect(received.name).toBe('Bye');
+  });
+
+  // ── custom storageKey ─────────────────────────────────────────────────────
+
+  test('profiles use the correct key when a custom storageKey is given', () => {
+    var w = AccessibilityWidget.init({ storageKey: 'myWidget' });
+    w.saveProfile('Custom key profile');
+    var customProfilesKey = 'myWidget:profiles';
+    var stored = JSON.parse(localStorage.getItem(customProfilesKey));
+    expect(stored).not.toBeNull();
+    expect(stored['Custom key profile']).toBeDefined();
+    localStorage.removeItem(customProfilesKey);
+  });
+
+  // ── UI ────────────────────────────────────────────────────────────────────
+
+  test('profiles section is rendered in the panel', () => {
+    AccessibilityWidget.init();
+    expect(document.querySelector('.a11y-widget__profiles')).not.toBeNull();
+  });
+
+  test('profile name input and save button are present', () => {
+    AccessibilityWidget.init();
+    expect(document.querySelector('.a11y-widget__profiles-input')).not.toBeNull();
+    expect(document.querySelector('.a11y-widget__profiles-save-btn')).not.toBeNull();
+  });
+
+  test('empty-state message shown when no profiles saved', () => {
+    AccessibilityWidget.init();
+    expect(document.querySelector('.a11y-widget__profiles-empty')).not.toBeNull();
+  });
+
+  test('saved profile appears in the list after saveProfile()', () => {
+    var w = AccessibilityWidget.init();
+    w.saveProfile('Visual A11y');
+    var nameSpans = document.querySelectorAll('.a11y-widget__profiles-item-name');
+    var names = Array.from(nameSpans).map(function (el) { return el.textContent; });
+    expect(names).toContain('Visual A11y');
+    expect(document.querySelector('.a11y-widget__profiles-empty')).toBeNull();
+  });
+
+  test('profile disappears from list after deleteProfile()', () => {
+    var w = AccessibilityWidget.init();
+    w.saveProfile('Temporary');
+    w.deleteProfile('Temporary');
+    var nameSpans = document.querySelectorAll('.a11y-widget__profiles-item-name');
+    var names = Array.from(nameSpans).map(function (el) { return el.textContent; });
+    expect(names).not.toContain('Temporary');
+    // Empty state message should reappear
+    expect(document.querySelector('.a11y-widget__profiles-empty')).not.toBeNull();
+  });
+
+  test('clicking Load button in UI calls loadProfile()', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('darkMode', true);
+    w.saveProfile('Dark');
+    w.resetAll();
+
+    var loadBtn = document.querySelector('.a11y-widget__profiles-load-btn');
+    expect(loadBtn).not.toBeNull();
+    simulateClick(loadBtn);
+
+    expect(w.getSettings().darkMode).toBe(true);
+  });
+
+  test('clicking Delete button in UI calls deleteProfile()', () => {
+    var w = AccessibilityWidget.init();
+    w.saveProfile('Deletable');
+    var deleteBtn = document.querySelector('.a11y-widget__profiles-delete-btn');
+    expect(deleteBtn).not.toBeNull();
+    simulateClick(deleteBtn);
+    expect(w.getProfiles()).not.toContain('Deletable');
+  });
+
+  test('save button in UI calls saveProfile() with input value', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('highContrast', true);
+
+    var input = document.querySelector('.a11y-widget__profiles-input');
+    var saveBtn = document.querySelector('.a11y-widget__profiles-save-btn');
+    input.value = 'My HC Profile';
+    simulateClick(saveBtn);
+
+    expect(w.getProfiles()).toContain('My HC Profile');
+  });
+
+  test('Enter in the profile name input triggers save', () => {
+    var w = AccessibilityWidget.init();
+    var input = document.querySelector('.a11y-widget__profiles-input');
+    input.value = 'Keyboard Save';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(w.getProfiles()).toContain('Keyboard Save');
+  });
+
+  test('profile list re-renders with translated labels after language change', () => {
+    var w = AccessibilityWidget.init();
+    w.saveProfile('TestProfile');
+
+    var loadBtn = document.querySelector('.a11y-widget__profiles-load-btn');
+    var enText = loadBtn.textContent;
+
+    w.setLanguage('he');
+    var loadBtnHe = document.querySelector('.a11y-widget__profiles-load-btn');
+    expect(loadBtnHe.textContent).not.toBe(enText);
+    expect(loadBtnHe.textContent.length).toBeGreaterThan(0);
+  });
+
+  // ── after destroy ─────────────────────────────────────────────────────────
+
+  test('saveProfile/loadProfile/deleteProfile are no-ops after destroy()', () => {
+    var w = AccessibilityWidget.init();
+    w.saveProfile('Before');
+    w.destroy();
+
+    // Should not throw and should not modify storage
+    expect(() => w.saveProfile('After')).not.toThrow();
+    expect(() => w.loadProfile('Before')).not.toThrow();
+    expect(() => w.deleteProfile('Before')).not.toThrow();
   });
 });

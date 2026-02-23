@@ -8,6 +8,9 @@ import {
   clearSettings,
   setStorageKey,
   getStorageKey,
+  saveProfiles,
+  loadProfiles,
+  clearProfiles,
   STORAGE_KEY,
 } from '../src/storage.js';
 
@@ -238,7 +241,92 @@ describe('clearSettings', () => {
 });
 
 // ===========================================================================
-// 7. Integration / Multi-operation
+// 7. saveProfiles / loadProfiles / clearProfiles
+// ===========================================================================
+
+describe('saveProfiles', () => {
+  const KEY = 'test-profiles';
+
+  afterEach(() => {
+    localStorage.removeItem(KEY);
+  });
+
+  test('stores profiles object as JSON', () => {
+    const profiles = { Reading: { highContrast: true }, Dark: { darkMode: true } };
+    saveProfiles(profiles, KEY);
+    expect(JSON.parse(localStorage.getItem(KEY))).toEqual(profiles);
+  });
+
+  test('silently fails when localStorage throws', () => {
+    const original = localStorage.setItem;
+    localStorage.setItem = () => { throw new Error('QuotaExceeded'); };
+    expect(() => saveProfiles({ x: {} }, KEY)).not.toThrow();
+    localStorage.setItem = original;
+  });
+});
+
+describe('loadProfiles', () => {
+  const KEY = 'test-profiles';
+
+  afterEach(() => {
+    localStorage.removeItem(KEY);
+  });
+
+  test('returns parsed object from localStorage', () => {
+    const profiles = { p1: { highContrast: true } };
+    localStorage.setItem(KEY, JSON.stringify(profiles));
+    expect(loadProfiles(KEY)).toEqual(profiles);
+  });
+
+  test('returns null when key does not exist', () => {
+    expect(loadProfiles(KEY)).toBeNull();
+  });
+
+  test('returns null when stored value is invalid JSON', () => {
+    localStorage.setItem(KEY, 'not-json{{{');
+    expect(loadProfiles(KEY)).toBeNull();
+  });
+
+  test('returns null when stored value is an array (not an object)', () => {
+    localStorage.setItem(KEY, JSON.stringify([1, 2, 3]));
+    expect(loadProfiles(KEY)).toBeNull();
+  });
+
+  test('silently returns null when localStorage throws', () => {
+    const original = localStorage.getItem;
+    localStorage.getItem = () => { throw new Error('SecurityError'); };
+    expect(loadProfiles(KEY)).toBeNull();
+    localStorage.getItem = original;
+  });
+});
+
+describe('clearProfiles', () => {
+  const KEY = 'test-profiles';
+
+  afterEach(() => {
+    localStorage.removeItem(KEY);
+  });
+
+  test('removes the profiles key from localStorage', () => {
+    localStorage.setItem(KEY, JSON.stringify({ p: {} }));
+    clearProfiles(KEY);
+    expect(localStorage.getItem(KEY)).toBeNull();
+  });
+
+  test('does not throw when key does not exist', () => {
+    expect(() => clearProfiles(KEY)).not.toThrow();
+  });
+
+  test('silently fails when localStorage.removeItem throws', () => {
+    const original = localStorage.removeItem;
+    localStorage.removeItem = () => { throw new Error('SecurityError'); };
+    expect(() => clearProfiles(KEY)).not.toThrow();
+    localStorage.removeItem = original;
+  });
+});
+
+// ===========================================================================
+// 8. Integration / Multi-operation
 // ===========================================================================
 
 describe('Multi-operation scenarios', () => {

@@ -9,7 +9,7 @@
  */
 
 import { FEATURES, getFeature, applyFeature, resetAllFeatures } from './features.js';
-import { saveSettings, loadSettings, clearSettings, setStorageKey, getStorageKey } from './storage.js';
+import { saveSettings, loadSettings, clearSettings, setStorageKey, getStorageKey, saveProfiles, loadProfiles } from './storage.js';
 import { getTranslation, getAvailableLanguages, getNativeName, isRTL } from './i18n.js';
 
 // ---------------------------------------------------------------------------
@@ -175,6 +175,9 @@ function Widget(options) {
     setStorageKey(options.storageKey);
   }
 
+  // Profiles localStorage key (derived from the effective storage key)
+  this._profilesKey = getStorageKey() + ':profiles';
+
   // -- State ----------------------------------------------------------------
   this._settings = {};
   this._isOpen = false;
@@ -200,6 +203,11 @@ function Widget(options) {
 
   // -- Zoom lock warning element (optional, shown if viewport blocks zoom) ---
   this._zoomWarnEl = null;
+
+  // -- Profiles section DOM refs --------------------------------------------
+  this._profilesSection = null;
+  this._profileNameInput = null;
+  this._profileListEl = null;
 
   // -- Reading Guide state ---------------------------------------------------
   this._readingGuideEl = null;
@@ -410,6 +418,9 @@ Widget.prototype._buildDOM = function () {
   }
 
   this._panel.appendChild(this._contentEl);
+
+  // Profiles section (between content and footer)
+  this._buildProfilesSection(this._panel);
 
   // Footer
   var footer = createElement('div', 'a11y-widget__footer');
@@ -629,6 +640,144 @@ Widget.prototype._buildGroupSection = function (groupName, parent) {
   }
 
   parent.appendChild(section);
+};
+
+/**
+ * Build the profiles (named presets) section and append it to `parent`.
+ *
+ * The section contains:
+ *  - A text input + "Save" button to create a new named profile.
+ *  - A list of saved profiles, each with "Load" and "Delete" buttons.
+ *
+ * @param {HTMLElement} parent
+ */
+Widget.prototype._buildProfilesSection = function (parent) {
+  var self = this;
+
+  var section = createElement('div', 'a11y-widget__profiles');
+
+  var titleEl = createElement('div', 'a11y-widget__profiles-title', {
+    'data-i18n': 'profiles',
+  });
+  titleEl.textContent = this._t('profiles');
+  section.appendChild(titleEl);
+
+  // Save-form row: [text input] [Save button]
+  var saveForm = createElement('div', 'a11y-widget__profiles-save');
+
+  var input = createElement('input', 'a11y-widget__profiles-input', {
+    'type': 'text',
+    'maxlength': '40',
+    'placeholder': this._t('profileNamePlaceholder'),
+    'aria-label': this._t('profileNamePlaceholder'),
+    'data-i18n-placeholder': 'profileNamePlaceholder',
+  });
+  this._profileNameInput = input;
+
+  var saveBtn = createElement('button', 'a11y-widget__profiles-save-btn', {
+    'type': 'button',
+    'data-i18n': 'saveProfile',
+  });
+  saveBtn.textContent = this._t('saveProfile');
+
+  function doSave() {
+    var name = (input.value || '').trim();
+    if (name) {
+      self.saveProfile(name);
+      input.value = '';
+    }
+  }
+
+  saveBtn.addEventListener('click', doSave);
+
+  // Allow Enter in the input to trigger save
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      doSave();
+    }
+  });
+
+  saveForm.appendChild(input);
+  saveForm.appendChild(saveBtn);
+  section.appendChild(saveForm);
+
+  // Profile list (aria-live so screen readers announce changes)
+  var list = createElement('div', 'a11y-widget__profiles-list', {
+    'aria-live': 'polite',
+  });
+  this._profileListEl = list;
+  section.appendChild(list);
+
+  this._profilesSection = section;
+
+  // Populate with any already-saved profiles
+  this._renderProfileList();
+
+  parent.appendChild(section);
+};
+
+/**
+ * (Re)render the saved-profile list inside `_profileListEl`.
+ * Called after every save/delete and on language change.
+ */
+Widget.prototype._renderProfileList = function () {
+  if (!this._profileListEl) {
+    return;
+  }
+
+  var self = this;
+
+  // Clear existing children
+  while (this._profileListEl.firstChild) {
+    this._profileListEl.removeChild(this._profileListEl.firstChild);
+  }
+
+  var names = this.getProfiles();
+
+  if (names.length === 0) {
+    var emptyEl = createElement('p', 'a11y-widget__profiles-empty', {
+      'data-i18n': 'noProfiles',
+    });
+    emptyEl.textContent = this._t('noProfiles');
+    this._profileListEl.appendChild(emptyEl);
+    return;
+  }
+
+  for (var i = 0; i < names.length; i++) {
+    var name = names[i];
+    var item = createElement('div', 'a11y-widget__profiles-item');
+
+    var nameSpan = createElement('span', 'a11y-widget__profiles-item-name');
+    nameSpan.textContent = name;
+    item.appendChild(nameSpan);
+
+    var btnGroup = createElement('div', 'a11y-widget__profiles-item-btns');
+
+    var loadBtn = createElement('button', 'a11y-widget__profiles-load-btn', {
+      'type': 'button',
+    });
+    loadBtn.textContent = this._t('loadProfile');
+    loadBtn.setAttribute('aria-label', this._t('loadProfile') + ': ' + name);
+
+    var deleteBtn = createElement('button', 'a11y-widget__profiles-delete-btn', {
+      'type': 'button',
+    });
+    deleteBtn.textContent = this._t('deleteProfile');
+    deleteBtn.setAttribute('aria-label', this._t('deleteProfile') + ': ' + name);
+
+    // Use IIFE to correctly capture `name` in the closure
+    (function (n) {
+      loadBtn.addEventListener('click', function () { self.loadProfile(n); });
+      deleteBtn.addEventListener('click', function () { self.deleteProfile(n); });
+    })(name);
+
+    btnGroup.appendChild(loadBtn);
+    btnGroup.appendChild(deleteBtn);
+    item.appendChild(btnGroup);
+
+    this._profileListEl.appendChild(item);
+  }
 };
 
 /**
@@ -1250,6 +1399,19 @@ Widget.prototype._applyLanguage = function (lang) {
     this._zoomWarnEl.textContent = this._t('zoomLockWarning');
   }
 
+  // Update input placeholders and their aria-labels
+  var placeholderEls = this._root.querySelectorAll('[data-i18n-placeholder]');
+  for (var ph = 0; ph < placeholderEls.length; ph++) {
+    var phKey = placeholderEls[ph].getAttribute('data-i18n-placeholder');
+    placeholderEls[ph].placeholder = this._t(phKey);
+    placeholderEls[ph].setAttribute('aria-label', this._t(phKey));
+  }
+
+  // Re-render profile list to pick up translated Load/Delete labels
+  if (this._profileListEl) {
+    this._renderProfileList();
+  }
+
   // Update language select value
   if (this._langSelect) {
     this._langSelect.value = lang;
@@ -1609,6 +1771,111 @@ Widget.prototype.applySettings = function (settings) {
   }
 };
 
+// ---------------------------------------------------------------------------
+// Public API: Profiles / Presets
+// ---------------------------------------------------------------------------
+
+/**
+ * Save the current feature settings as a named profile in localStorage.
+ *
+ * If a profile with the same `name` already exists it is overwritten.
+ * The `name` is trimmed; empty strings and non-strings are ignored.
+ * Names longer than 40 characters are silently truncated.
+ *
+ * @param {string} name - Human-readable label for the profile.
+ * @fires {CustomEvent} a11y:profilesave
+ *   `event.detail` → `{ name: string, settings: Record<string, boolean|number> }`
+ *
+ * @example
+ * widget.saveProfile('My reading settings');
+ */
+Widget.prototype.saveProfile = function (name) {
+  if (this._destroyed) {
+    return;
+  }
+  var trimmed = (typeof name === 'string' ? name : '').trim();
+  if (!trimmed) {
+    return;
+  }
+  if (trimmed.length > 40) {
+    trimmed = trimmed.slice(0, 40);
+  }
+
+  var profiles = loadProfiles(this._profilesKey) || {};
+  profiles[trimmed] = this.getSettings();
+  saveProfiles(profiles, this._profilesKey);
+
+  this._renderProfileList();
+  this._emit('a11y:profilesave', { name: trimmed, settings: this.getSettings() });
+};
+
+/**
+ * Load a previously saved profile and apply its settings.
+ *
+ * No-op when `name` does not match any saved profile.
+ *
+ * @param {string} name - The profile name to load.
+ * @fires {CustomEvent} a11y:profileload
+ *   `event.detail` → `{ name: string, settings: Record<string, boolean|number> }`
+ *
+ * @example
+ * widget.loadProfile('My reading settings');
+ */
+Widget.prototype.loadProfile = function (name) {
+  if (this._destroyed) {
+    return;
+  }
+  var profiles = loadProfiles(this._profilesKey) || {};
+  var saved = profiles[name];
+  if (!saved || typeof saved !== 'object') {
+    return;
+  }
+
+  this.applySettings(saved);
+  this._emit('a11y:profileload', { name: name, settings: this.getSettings() });
+};
+
+/**
+ * Delete a saved profile from localStorage.
+ *
+ * No-op when `name` does not match any saved profile.
+ *
+ * @param {string} name - The profile name to delete.
+ * @fires {CustomEvent} a11y:profiledelete
+ *   `event.detail` → `{ name: string }`
+ *
+ * @example
+ * widget.deleteProfile('My reading settings');
+ */
+Widget.prototype.deleteProfile = function (name) {
+  if (this._destroyed) {
+    return;
+  }
+  var profiles = loadProfiles(this._profilesKey) || {};
+  if (!Object.prototype.hasOwnProperty.call(profiles, name)) {
+    return;
+  }
+
+  delete profiles[name];
+  saveProfiles(profiles, this._profilesKey);
+
+  this._renderProfileList();
+  this._emit('a11y:profiledelete', { name: name });
+};
+
+/**
+ * Return an alphabetically sorted array of all saved profile names.
+ *
+ * @returns {string[]}
+ *
+ * @example
+ * var names = widget.getProfiles(); // ['Dark theme', 'Reading mode']
+ */
+Widget.prototype.getProfiles = function () {
+  var profiles = loadProfiles(this._profilesKey) || {};
+  return Object.keys(profiles).sort();
+};
+
 /**
  * Reset all features to their defaults, clear persisted settings, and
  * update the UI.
@@ -1784,6 +2051,9 @@ Widget.prototype.destroy = function () {
   this._statementLinkEl = null;
   this._colorBlindSvgEl = null;
   this._zoomWarnEl = null;
+  this._profilesSection = null;
+  this._profileNameInput = null;
+  this._profileListEl = null;
 };
 
 export default Widget;
