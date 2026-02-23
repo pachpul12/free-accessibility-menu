@@ -702,9 +702,138 @@ body.a11y-dark-mode .a11y-widget__profiles-empty {
   color: #666666;
 }
 
+/* --------------------------------------------------------------------------
+   23. Position Switcher (.a11y-widget__position)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__position {
+  border-top: 1px solid var(--a11y-border);
+  padding: 6px 0 8px;
+}
+
+.a11y-widget__position-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #666666;
+  letter-spacing: 0.05em;
+  padding: 2px 12px 6px;
+}
+
+.a11y-widget__position-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 0 12px;
+}
+
+.a11y-widget__position-btn {
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid var(--a11y-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--a11y-text);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.a11y-widget__position-btn:hover {
+  background-color: var(--a11y-active-bg);
+  border-color: var(--a11y-primary);
+}
+
+.a11y-widget__position-btn--active {
+  background-color: var(--a11y-active-bg);
+  border-color: var(--a11y-primary);
+  color: var(--a11y-primary);
+  font-weight: 600;
+}
+
+.a11y-widget__position-btn:focus-visible {
+  outline: 2px solid var(--a11y-primary);
+  outline-offset: 2px;
+}
+
+/* Dark mode overrides */
+body.a11y-dark-mode .a11y-widget__position {
+  border-color: #444444;
+}
+
+body.a11y-dark-mode .a11y-widget__position-title {
+  color: #aaaaaa;
+}
+
+body.a11y-dark-mode .a11y-widget__position-btn {
+  border-color: #555555;
+  color: var(--a11y-text-dark);
+}
+
+body.a11y-dark-mode .a11y-widget__position-btn--active {
+  background-color: rgba(26, 115, 232, 0.2);
+  border-color: var(--a11y-primary);
+  color: #7baaf7;
+}
+
 /* ==========================================================================
    MODIFIERS
    ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Position Modifiers ([data-position])
+   Default position (bottom-right) is handled by the base .a11y-widget rule.
+   -------------------------------------------------------------------------- */
+
+.a11y-widget[data-position="bottom-left"] {
+  right: auto;
+  left: calc(20px + env(safe-area-inset-left, 0px));
+}
+
+.a11y-widget[data-position="bottom-left"] .a11y-widget__panel {
+  right: auto;
+  left: 0;
+  transform-origin: bottom left;
+}
+
+.a11y-widget[data-position="top-right"] {
+  bottom: auto;
+  top: calc(20px + env(safe-area-inset-top, 0px));
+}
+
+.a11y-widget[data-position="top-right"] .a11y-widget__panel {
+  bottom: auto;
+  top: calc(var(--a11y-toggle-size) + 12px);
+  transform-origin: top right;
+  transform: translateY(-12px) scale(0.96);
+}
+
+.a11y-widget--open[data-position="top-right"] .a11y-widget__panel {
+  transform: translateY(0) scale(1);
+}
+
+.a11y-widget[data-position="top-left"] {
+  right: auto;
+  left: calc(20px + env(safe-area-inset-left, 0px));
+  bottom: auto;
+  top: calc(20px + env(safe-area-inset-top, 0px));
+}
+
+.a11y-widget[data-position="top-left"] .a11y-widget__panel {
+  right: auto;
+  left: 0;
+  bottom: auto;
+  top: calc(var(--a11y-toggle-size) + 12px);
+  transform-origin: top left;
+  transform: translateY(-12px) scale(0.96);
+}
+
+.a11y-widget--open[data-position="top-left"] .a11y-widget__panel {
+  transform: translateY(0) scale(1);
+}
 
 /* --------------------------------------------------------------------------
    RTL Modifier (.a11y-widget--rtl)
@@ -744,6 +873,17 @@ body.a11y-dark-mode .a11y-widget__profiles-empty {
 /* ==========================================================================
    ACCESSIBILITY FEATURE CLASSES (applied to <body>)
    ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Reduced Transparency
+   Removes backdrop-filter/frosted-glass effects that can trigger
+   vestibular disorders and impair readability for some users.
+   -------------------------------------------------------------------------- */
+
+body.a11y-reduced-transparency *:not(.a11y-widget):not(.a11y-widget *) {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
 
 /* --------------------------------------------------------------------------
    High Contrast Mode

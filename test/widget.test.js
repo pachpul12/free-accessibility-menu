@@ -83,6 +83,7 @@ var TOGGLE_FEATURE_IDS = [
   'deuteranopia',
   'protanopia',
   'tritanopia',
+  'reducedTransparency',
 ];
 var ALL_FEATURE_IDS = TOGGLE_FEATURE_IDS.concat(['fontSize', 'lineHeight', 'letterSpacing', 'wordSpacing']);
 var FEATURE_CSS = {
@@ -103,6 +104,7 @@ var FEATURE_CSS = {
   deuteranopia: 'a11y-deuteranopia',
   protanopia: 'a11y-protanopia',
   tritanopia: 'a11y-tritanopia',
+  reducedTransparency: 'a11y-reduced-transparency',
 };
 
 // ---------------------------------------------------------------------------
@@ -122,8 +124,8 @@ afterEach(() => {
 // ===========================================================================
 
 describe('Initialization & API', () => {
-  test('AccessibilityWidget.version is "2.1.0"', () => {
-    expect(AccessibilityWidget.version).toBe('2.1.0');
+  test('AccessibilityWidget.version is "2.2.0"', () => {
+    expect(AccessibilityWidget.version).toBe('2.2.0');
   });
 
   test('init() returns a widget instance', () => {
@@ -217,7 +219,7 @@ describe('DOM Structure', () => {
     expect(getTitle().textContent).toBe('Accessibility Menu');
   });
 
-  test('all 21 features rendered as menu items', () => {
+  test('all 22 features rendered as menu items', () => {
     ALL_FEATURE_IDS.forEach((id) => {
       expect(getFeatureItem(id)).not.toBeNull();
     });
@@ -1342,6 +1344,7 @@ describe('All features disabled edge case', () => {
         deuteranopia: false,
         protanopia: false,
         tritanopia: false,
+        reducedTransparency: false,
       },
     });
     expect(getRoot()).not.toBeNull();
@@ -1854,6 +1857,7 @@ describe('Coverage - Edge Cases', () => {
         deuteranopia: false,
         protanopia: false,
         tritanopia: false,
+        reducedTransparency: false,
       },
     });
     w.openMenu();
@@ -2555,5 +2559,152 @@ describe('Profiles / Presets System', () => {
     expect(() => w.saveProfile('After')).not.toThrow();
     expect(() => w.loadProfile('Before')).not.toThrow();
     expect(() => w.deleteProfile('Before')).not.toThrow();
+  });
+});
+
+// ===========================================================================
+// 28. Position Switcher (F-203)
+// ===========================================================================
+
+describe('Position Switcher', () => {
+  afterEach(() => {
+    AccessibilityWidget.destroy();
+  });
+
+  // ── API presence ──────────────────────────────────────────────────────────
+
+  test('setPosition is a function on the widget instance', () => {
+    var w = AccessibilityWidget.init();
+    expect(typeof w.setPosition).toBe('function');
+  });
+
+  // ── Default position ──────────────────────────────────────────────────────
+
+  test('widget root has data-position="bottom-right" by default', () => {
+    AccessibilityWidget.init();
+    var root = document.querySelector('.a11y-widget');
+    expect(root.getAttribute('data-position')).toBe('bottom-right');
+  });
+
+  test('options.position sets initial data-position attribute', () => {
+    AccessibilityWidget.init({ position: 'top-left' });
+    var root = document.querySelector('.a11y-widget');
+    expect(root.getAttribute('data-position')).toBe('top-left');
+  });
+
+  // ── setPosition API ───────────────────────────────────────────────────────
+
+  test('setPosition updates data-position on the root element', () => {
+    var w = AccessibilityWidget.init();
+    w.setPosition('top-right');
+    expect(document.querySelector('.a11y-widget').getAttribute('data-position')).toBe('top-right');
+  });
+
+  test('setPosition accepts all four valid values', () => {
+    var w = AccessibilityWidget.init();
+    var positions = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+    positions.forEach(function (pos) {
+      w.setPosition(pos);
+      expect(document.querySelector('.a11y-widget').getAttribute('data-position')).toBe(pos);
+    });
+  });
+
+  test('setPosition ignores invalid position strings', () => {
+    var w = AccessibilityWidget.init();
+    w.setPosition('center');
+    expect(document.querySelector('.a11y-widget').getAttribute('data-position')).toBe('bottom-right');
+  });
+
+  test('setPosition is a no-op when pos already equals current position', () => {
+    var w = AccessibilityWidget.init();
+    var events = [];
+    window.addEventListener('a11y:positionchange', function (e) { events.push(e); });
+    w.setPosition('bottom-right'); // already the default
+    expect(events).toHaveLength(0);
+    window.removeEventListener('a11y:positionchange', function () {});
+  });
+
+  test('setPosition is a no-op after destroy()', () => {
+    var w = AccessibilityWidget.init();
+    w.destroy();
+    expect(() => w.setPosition('top-left')).not.toThrow();
+  });
+
+  // ── CustomEvent ───────────────────────────────────────────────────────────
+
+  test('setPosition fires a11y:positionchange with position in detail', () => {
+    var w = AccessibilityWidget.init();
+    var received = null;
+    var handler = function (e) { received = e.detail; };
+    window.addEventListener('a11y:positionchange', handler);
+    w.setPosition('top-left');
+    window.removeEventListener('a11y:positionchange', handler);
+    expect(received).not.toBeNull();
+    expect(received.position).toBe('top-left');
+  });
+
+  // ── Persistence ───────────────────────────────────────────────────────────
+
+  test('setPosition persists and is restored on re-init', () => {
+    var w = AccessibilityWidget.init();
+    w.setPosition('top-left');
+    w.destroy();
+
+    AccessibilityWidget.init();
+    expect(document.querySelector('.a11y-widget').getAttribute('data-position')).toBe('top-left');
+    localStorage.clear();
+  });
+
+  // ── UI section rendered ────────────────────────────────────────────────────
+
+  test('position section is rendered in the DOM', () => {
+    AccessibilityWidget.init();
+    expect(document.querySelector('.a11y-widget__position')).not.toBeNull();
+  });
+
+  test('position section contains 4 corner buttons', () => {
+    AccessibilityWidget.init();
+    var btns = document.querySelectorAll('.a11y-widget__position-btn');
+    expect(btns).toHaveLength(4);
+  });
+
+  test('each position button has a data-pos attribute', () => {
+    AccessibilityWidget.init();
+    var btns = document.querySelectorAll('.a11y-widget__position-btn');
+    var positions = Array.from(btns).map(function (b) { return b.getAttribute('data-pos'); });
+    expect(positions).toContain('top-left');
+    expect(positions).toContain('top-right');
+    expect(positions).toContain('bottom-left');
+    expect(positions).toContain('bottom-right');
+  });
+
+  test('the active button has aria-pressed="true"', () => {
+    AccessibilityWidget.init();
+    var activeBtn = document.querySelector('.a11y-widget__position-btn--active');
+    expect(activeBtn).not.toBeNull();
+    expect(activeBtn.getAttribute('aria-pressed')).toBe('true');
+    expect(activeBtn.getAttribute('data-pos')).toBe('bottom-right');
+  });
+
+  test('clicking a position button calls setPosition and updates aria-pressed', () => {
+    AccessibilityWidget.init();
+    var topLeftBtn = document.querySelector('.a11y-widget__position-btn[data-pos="top-left"]');
+    simulateClick(topLeftBtn);
+    expect(topLeftBtn.getAttribute('aria-pressed')).toBe('true');
+    expect(topLeftBtn.classList.contains('a11y-widget__position-btn--active')).toBe(true);
+    var bottomRightBtn = document.querySelector('.a11y-widget__position-btn[data-pos="bottom-right"]');
+    expect(bottomRightBtn.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  // ── Language ──────────────────────────────────────────────────────────────
+
+  test('position button aria-labels update on language change', () => {
+    var w = AccessibilityWidget.init();
+    var tlBtn = document.querySelector('.a11y-widget__position-btn[data-pos="top-left"]');
+    var enLabel = tlBtn.getAttribute('aria-label');
+    w.setLanguage('he');
+    var heLabel = document.querySelector('.a11y-widget__position-btn[data-pos="top-left"]').getAttribute('aria-label');
+    expect(heLabel).not.toBe(enLabel);
+    expect(heLabel.length).toBeGreaterThan(0);
   });
 });

@@ -209,6 +209,10 @@ function Widget(options) {
   this._profileNameInput = null;
   this._profileListEl = null;
 
+  // -- Position section DOM refs --------------------------------------------
+  this._positionSection = null;
+  this._positionBtns = {};   // pos string -> <button> element
+
   // -- Reading Guide state ---------------------------------------------------
   this._readingGuideEl = null;
   this._handleReadingGuideMove = this._onReadingGuideMove.bind(this);
@@ -284,6 +288,11 @@ Widget.prototype._loadState = function () {
     if (typeof saved._language === 'string' && saved._language.length > 0) {
       this._language = saved._language;
     }
+    // Restore position if saved and valid
+    var VALID_POS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+    if (typeof saved._position === 'string' && VALID_POS.indexOf(saved._position) !== -1) {
+      this._position = saved._position;
+    }
     // Merge saved feature values with type validation
     for (var j = 0; j < this._enabledFeatures.length; j++) {
       var feat = this._enabledFeatures[j];
@@ -312,6 +321,7 @@ Widget.prototype._saveState = function () {
     toSave[keys[i]] = this._settings[keys[i]];
   }
   toSave._language = this._language;
+  toSave._position = this._position;
   saveSettings(toSave);
 };
 
@@ -421,6 +431,9 @@ Widget.prototype._buildDOM = function () {
 
   // Profiles section (between content and footer)
   this._buildProfilesSection(this._panel);
+
+  // Position switcher section
+  this._buildPositionSection(this._panel);
 
   // Footer
   var footer = createElement('div', 'a11y-widget__footer');
@@ -715,6 +728,87 @@ Widget.prototype._buildProfilesSection = function (parent) {
   this._renderProfileList();
 
   parent.appendChild(section);
+};
+
+/**
+ * Build the widget-position switcher section and append it to `parent`.
+ *
+ * Renders a 2×2 grid of corner buttons (Top-Left, Top-Right,
+ * Bottom-Left, Bottom-Right) that let the user reposition the widget
+ * toggle button at runtime.
+ *
+ * @param {HTMLElement} parent
+ */
+Widget.prototype._buildPositionSection = function (parent) {
+  var self = this;
+  var VALID_POSITIONS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+  var POS_KEYS = {
+    'top-left': 'topLeft',
+    'top-right': 'topRight',
+    'bottom-left': 'bottomLeft',
+    'bottom-right': 'bottomRight',
+  };
+
+  var section = createElement('div', 'a11y-widget__position');
+
+  var titleEl = createElement('div', 'a11y-widget__position-title', {
+    'data-i18n': 'position',
+  });
+  titleEl.textContent = this._t('position');
+  section.appendChild(titleEl);
+
+  var grid = createElement('div', 'a11y-widget__position-grid');
+
+  for (var i = 0; i < VALID_POSITIONS.length; i++) {
+    var pos = VALID_POSITIONS[i];
+    var i18nKey = POS_KEYS[pos];
+    var isActive = pos === this._position;
+
+    var btn = createElement('button', 'a11y-widget__position-btn', {
+      'type': 'button',
+      'data-pos': pos,
+      'aria-label': this._t(i18nKey),
+      'aria-pressed': isActive ? 'true' : 'false',
+    });
+    if (isActive) {
+      btn.classList.add('a11y-widget__position-btn--active');
+    }
+
+    this._positionBtns[pos] = btn;
+
+    // IIFE to capture `pos` in closure
+    (function (p) {
+      btn.addEventListener('click', function () { self.setPosition(p); });
+    })(pos);
+
+    grid.appendChild(btn);
+  }
+
+  section.appendChild(grid);
+  this._positionSection = section;
+  parent.appendChild(section);
+};
+
+/**
+ * Apply a validated position value to the widget root and update button states.
+ *
+ * @param {string} pos - One of `'top-left'`, `'top-right'`, `'bottom-left'`, `'bottom-right'`.
+ */
+Widget.prototype._applyPosition = function (pos) {
+  if (this._root) {
+    this._root.setAttribute('data-position', pos);
+  }
+  var keys = Object.keys(this._positionBtns);
+  for (var i = 0; i < keys.length; i++) {
+    var isActive = keys[i] === pos;
+    var btn = this._positionBtns[keys[i]];
+    btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    if (isActive) {
+      btn.classList.add('a11y-widget__position-btn--active');
+    } else {
+      btn.classList.remove('a11y-widget__position-btn--active');
+    }
+  }
 };
 
 /**
@@ -1412,6 +1506,21 @@ Widget.prototype._applyLanguage = function (lang) {
     this._renderProfileList();
   }
 
+  // Update position button aria-labels
+  var POS_KEYS = {
+    'top-left': 'topLeft',
+    'top-right': 'topRight',
+    'bottom-left': 'bottomLeft',
+    'bottom-right': 'bottomRight',
+  };
+  var posBtnKeys = Object.keys(this._positionBtns);
+  for (var pb = 0; pb < posBtnKeys.length; pb++) {
+    var posBtnKey = POS_KEYS[posBtnKeys[pb]];
+    if (posBtnKey) {
+      this._positionBtns[posBtnKeys[pb]].setAttribute('aria-label', this._t(posBtnKey));
+    }
+  }
+
   // Update language select value
   if (this._langSelect) {
     this._langSelect.value = lang;
@@ -1864,6 +1973,40 @@ Widget.prototype.deleteProfile = function (name) {
 };
 
 /**
+ * Move the widget toggle button to a different viewport corner.
+ *
+ * Valid positions: `'top-left'`, `'top-right'`, `'bottom-left'`, `'bottom-right'`.
+ * The new position is persisted to localStorage and reflected immediately in
+ * the DOM via `data-position` on the widget root element.
+ *
+ * No-op when the widget has been destroyed, `pos` is not one of the four
+ * valid values, or `pos` already matches the current position.
+ *
+ * @param {string} pos - Target corner.
+ * @fires {CustomEvent} a11y:positionchange
+ *   `event.detail` → `{ position: string }`
+ *
+ * @example
+ * widget.setPosition('top-left');
+ */
+Widget.prototype.setPosition = function (pos) {
+  if (this._destroyed) {
+    return;
+  }
+  var VALID_POSITIONS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+  if (VALID_POSITIONS.indexOf(pos) === -1) {
+    return;
+  }
+  if (pos === this._position) {
+    return;
+  }
+  this._position = pos;
+  this._applyPosition(pos);
+  this._saveState();
+  this._emit('a11y:positionchange', { position: pos });
+};
+
+/**
  * Return an alphabetically sorted array of all saved profile names.
  *
  * @returns {string[]}
@@ -2054,6 +2197,8 @@ Widget.prototype.destroy = function () {
   this._profilesSection = null;
   this._profileNameInput = null;
   this._profileListEl = null;
+  this._positionSection = null;
+  this._positionBtns = {};
 };
 
 export default Widget;
