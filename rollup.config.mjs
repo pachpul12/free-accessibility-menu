@@ -33,6 +33,32 @@ function copyCSS() {
   };
 }
 
+/**
+ * Plugin that copies the TypeScript declaration file from src/ to dist/.
+ */
+function copyDTS() {
+  return {
+    name: 'copy-dts',
+    writeBundle() {
+      const srcPath = resolve(__dirname, 'src/index.d.ts');
+      const destDir = resolve(__dirname, 'dist');
+      const destPath = resolve(destDir, 'index.d.ts');
+
+      if (!existsSync(srcPath)) {
+        console.warn('[copy-dts] src/index.d.ts not found -- skipping.');
+        return;
+      }
+
+      if (!existsSync(destDir)) {
+        mkdirSync(destDir, { recursive: true });
+      }
+
+      writeFileSync(destPath, readFileSync(srcPath, 'utf-8'));
+      console.log('[copy-dts] Copied index.d.ts to dist/');
+    },
+  };
+}
+
 export default [
   // ── ESM (for modern bundlers and import statements) ──────────────────────
   {
@@ -42,7 +68,7 @@ export default [
       format: 'es',
       sourcemap: true,
     },
-    plugins: [copyCSS()],
+    plugins: [copyCSS(), copyDTS()],
   },
 
   // ── CJS (for Node.js require()) ───────────────────────────────────────────

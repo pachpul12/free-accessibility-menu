@@ -207,10 +207,19 @@ for (let i = 0; i < FEATURES.length; i++) {
 // ---------------------------------------------------------------------------
 
 /**
- * Return the feature definition for the given id, or `undefined` if not found.
+ * Return the {@link FeatureDefinition} for the given feature ID.
  *
- * @param {string} featureId
+ * Performs an O(1) lookup via the internal `featureMap`.  Returns
+ * `undefined` for unrecognised IDs so callers can guard with a simple
+ * truthiness check.
+ *
+ * @param {string} featureId - One of the 14 built-in feature IDs
+ *   (e.g. `"highContrast"`, `"fontSize"`, `"readingGuide"`).
  * @returns {FeatureDefinition|undefined}
+ *
+ * @example
+ * var def = getFeature('fontSize');
+ * // { id: 'fontSize', type: 'range', min: 0, max: 5, step: 1, ... }
  */
 function getFeature(featureId) {
   return featureMap.get(featureId);
@@ -239,14 +248,24 @@ function removeFontSizeClasses() {
 /**
  * Apply a feature to the DOM based on its type and the supplied value.
  *
- * - For toggle features the class is added when `value` is truthy and
- *   removed when falsy.
- * - For the special `fontSize` range feature the previous font-size class
- *   is removed first and the new one (`a11y-font-{value}`) is applied
- *   (only when `value > 0`).
+ * **Toggle features** (`type === 'toggle'`): adds the feature's `cssClass`
+ * to `document.body` when `value` is truthy; removes it when falsy.
  *
- * @param {string} featureId - The feature identifier.
- * @param {boolean|number} value - The value to apply.
+ * **Range features** (`type === 'range'`, currently only `fontSize`):
+ * removes all existing `a11y-font-{n}` classes, then adds
+ * `a11y-font-{value}` on both `document.body` and `document.documentElement`
+ * (only when `value > feature.min`).
+ *
+ * Unknown feature IDs are silently ignored.
+ *
+ * @param {string}         featureId - One of the 14 built-in feature IDs.
+ * @param {boolean|number} value     - Value to apply.
+ *
+ * @example
+ * applyFeature('highContrast', true);  // adds 'a11y-high-contrast' to body
+ * applyFeature('highContrast', false); // removes it
+ * applyFeature('fontSize', 3);         // adds 'a11y-font-3' to body + html
+ * applyFeature('fontSize', 0);         // removes all font-size classes
  */
 export function applyFeature(featureId, value) {
   const feature = getFeature(featureId);
@@ -279,9 +298,12 @@ export function applyFeature(featureId, value) {
 }
 
 /**
- * Remove a feature from the DOM, restoring its default state.
+ * Remove a feature from the DOM, restoring its default (inactive) state.
  *
- * @param {string} featureId - The feature identifier.
+ * Equivalent to calling `applyFeature(featureId, false)` for toggle features
+ * or `applyFeature(featureId, 0)` for range features.
+ *
+ * @param {string} featureId - One of the 14 built-in feature IDs.
  */
 export function removeFeature(featureId) {
   const feature = getFeature(featureId);
@@ -301,8 +323,11 @@ export function removeFeature(featureId) {
 }
 
 /**
- * Remove all feature-related classes from `document.body`, resetting to
- * the default visual state.
+ * Remove all 14 feature-related classes from `document.body` in one pass,
+ * restoring the page to its default visual state.
+ *
+ * Called internally by {@link Widget#resetAll} and {@link Widget#destroy}.
+ * Safe to call even when no features are currently active.
  */
 export function resetAllFeatures() {
   for (let i = 0; i < FEATURES.length; i++) {

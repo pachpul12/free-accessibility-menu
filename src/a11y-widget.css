@@ -19,7 +19,7 @@
   --a11y-active-bg: #e8f0fe;
   --a11y-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   --a11y-radius: 12px;
-  --a11y-toggle-size: 42px;
+  --a11y-toggle-size: 48px;
   --a11y-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     sans-serif;
 }
@@ -30,8 +30,8 @@
 
 .a11y-widget {
   position: fixed;
-  right: 20px;
-  bottom: 20px;
+  right: calc(20px + env(safe-area-inset-right, 0px));
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   z-index: 999999;
   font-family: var(--a11y-font-family);
   font-size: 14px;
@@ -412,8 +412,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   border: 1px solid var(--a11y-border);
   border-radius: 50%;
@@ -501,6 +501,33 @@
   outline-offset: 2px;
 }
 
+/* --------------------------------------------------------------------------
+   21. Accessibility Statement Link (.a11y-widget__statement-link)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__statement-link {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--a11y-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.a11y-widget__statement-link:hover {
+  color: var(--a11y-primary-hover);
+}
+
+.a11y-widget__statement-link:focus-visible {
+  outline: 2px solid var(--a11y-primary);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+body.a11y-dark-mode .a11y-widget__statement-link {
+  color: #6db3f2;
+}
+
 /* ==========================================================================
    MODIFIERS
    ========================================================================== */
@@ -511,7 +538,7 @@
 
 .a11y-widget--rtl {
   right: auto;
-  left: 20px;
+  left: calc(20px + env(safe-area-inset-left, 0px));
   direction: rtl;
   text-align: right;
 }

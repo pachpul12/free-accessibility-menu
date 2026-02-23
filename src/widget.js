@@ -114,8 +114,18 @@ function capitalise(str) {
 /**
  * @class Widget
  *
- * Encapsulates the entire accessibility menu lifecycle: DOM creation,
- * event binding, state management, i18n, and public API.
+ * Encapsulates the entire accessibility menu lifecycle: DOM construction,
+ * event binding, feature state management, i18n, persistence, and the
+ * public instance API.
+ *
+ * Consumers should **not** instantiate `Widget` directly — use
+ * {@link AccessibilityWidget.init} which enforces the singleton contract and
+ * provides the SSR guard.
+ *
+ * @param {import('./index.js').WidgetOptions} [options={}]
+ * @fires {CustomEvent} a11y:init - Dispatched on `window` at the end of the
+ *   constructor once the widget is fully mounted.
+ *   `event.detail` is an {@link A11yInitDetail} object.
  */
 function Widget(options) {
   options = options || {};
@@ -126,6 +136,9 @@ function Widget(options) {
   this._onOpenMenu = typeof options.onOpenMenu === 'function' ? options.onOpenMenu : null;
   this._onCloseMenu = typeof options.onCloseMenu === 'function' ? options.onCloseMenu : null;
   this._position = options.position || 'bottom-right';
+  this._toggleIconUrl = options.toggleIconUrl || TOGGLE_ICON_PNG;
+  this._toggleIconHoverUrl = options.toggleIconHoverUrl || TOGGLE_ICON_HOVER_PNG;
+  this._accessibilityStatementUrl = options.accessibilityStatementUrl || null;
 
   // Determine which features are enabled
   this._enabledFeatures = this._resolveEnabledFeatures(options.features);
@@ -141,10 +154,6 @@ function Widget(options) {
   this._isOpen = false;
   this._destroyed = false;
 
-  // Save original document lang/dir so we can restore on destroy
-  this._originalLang = document.documentElement.getAttribute('lang');
-  this._originalDir = document.documentElement.getAttribute('dir');
-
   // -- DOM refs (populated by _buildDOM) ------------------------------------
   this._root = null;
   this._toggleBtn = null;
@@ -158,6 +167,7 @@ function Widget(options) {
   this._itemElements = {};    // featureId -> item DOM element
   this._rangeValueEls = {};   // featureId -> value display element
   this._langSelect = null;    // <select> element for language switcher
+  this._statementLinkEl = null; // <a> for accessibility statement (optional)
 
   // -- Reading Guide state ---------------------------------------------------
   this._readingGuideEl = null;
@@ -181,6 +191,8 @@ function Widget(options) {
   this._attachEvents();
   this._applyAllFeatures();
   this._applyLanguage(this._language);
+
+  this._emit('a11y:init', { settings: this.getSettings() });
 }
 
 // ---------------------------------------------------------------------------
@@ -300,8 +312,11 @@ Widget.prototype._buildDOM = function () {
     'aria-label': this._t('menuTitle'),
     'aria-controls': 'a11y-widget-panel',
   });
+  var normalIconUrl = this._toggleIconUrl;
+  var hoverIconUrl = this._toggleIconHoverUrl;
+
   var toggleIcon = document.createElement('img');
-  toggleIcon.src = TOGGLE_ICON_PNG;
+  toggleIcon.src = normalIconUrl;
   toggleIcon.alt = '';
   toggleIcon.setAttribute('aria-hidden', 'true');
   toggleIcon.width = 28;
@@ -310,13 +325,13 @@ Widget.prototype._buildDOM = function () {
 
   // Preload hover image
   var hoverPreload = new Image();
-  hoverPreload.src = TOGGLE_ICON_HOVER_PNG;
+  hoverPreload.src = hoverIconUrl;
 
   this._toggleBtn.addEventListener('mouseenter', function () {
-    toggleIcon.src = TOGGLE_ICON_HOVER_PNG;
+    toggleIcon.src = hoverIconUrl;
   });
   this._toggleBtn.addEventListener('mouseleave', function () {
-    toggleIcon.src = TOGGLE_ICON_PNG;
+    toggleIcon.src = normalIconUrl;
   });
   this._root.appendChild(this._toggleBtn);
 
@@ -367,6 +382,17 @@ Widget.prototype._buildDOM = function () {
   this._resetBtn = createElement('button', 'a11y-widget__reset');
   this._resetBtn.textContent = this._t('resetAll');
   footer.appendChild(this._resetBtn);
+
+  if (this._accessibilityStatementUrl) {
+    this._statementLinkEl = createElement('a', 'a11y-widget__statement-link', {
+      'href': this._accessibilityStatementUrl,
+      'target': '_blank',
+      'rel': 'noopener noreferrer',
+      'data-i18n': 'accessibilityStatementLink',
+    });
+    this._statementLinkEl.textContent = this._t('accessibilityStatementLink');
+    footer.appendChild(this._statementLinkEl);
+  }
 
   this._panel.appendChild(footer);
   this._root.appendChild(this._panel);
@@ -881,6 +907,8 @@ Widget.prototype._toggleFeature = function (featureId) {
   if (this._onToggle) {
     this._onToggle(featureId, newValue);
   }
+
+  this._emit('a11y:toggle', { featureId: featureId, value: newValue, settings: this.getSettings() });
 };
 
 /**
@@ -922,6 +950,8 @@ Widget.prototype._adjustRange = function (featureId, action) {
   if (this._onToggle) {
     this._onToggle(featureId, next);
   }
+
+  this._emit('a11y:toggle', { featureId: featureId, value: next, settings: this.getSettings() });
 };
 
 /**
@@ -940,6 +970,39 @@ Widget.prototype._updateItemState = function (featureId, isActive) {
     item.classList.add(ACTIVE_MODIFIER);
   } else {
     item.classList.remove(ACTIVE_MODIFIER);
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Internal: CustomEvent emitter
+// ---------------------------------------------------------------------------
+
+/**
+ * Dispatch a namespaced CustomEvent on `window` for external listeners.
+ *
+ * All events are non-bubbling and non-cancelable.  Errors thrown by event
+ * listeners are silently swallowed so they can never crash the widget.
+ *
+ * Called at: constructor (`a11y:init`), `_toggleFeature` / `_adjustRange`
+ * (`a11y:toggle`), `openMenu` (`a11y:open`), `closeMenu` (`a11y:close`),
+ * `resetAll` (`a11y:reset`), `setLanguage` (`a11y:langchange`),
+ * `destroy` (`a11y:destroy`).
+ *
+ * @param {string} eventName - Namespaced event name (e.g. `'a11y:toggle'`).
+ * @param {Object} [detail={}] - Arbitrary payload attached to `event.detail`.
+ */
+Widget.prototype._emit = function (eventName, detail) {
+  if (typeof window === 'undefined' || typeof CustomEvent === 'undefined') {
+    return;
+  }
+  try {
+    window.dispatchEvent(new CustomEvent(eventName, {
+      bubbles: false,
+      cancelable: false,
+      detail: detail || {},
+    }));
+  } catch (_e) {
+    // Silently ignore — never let event emission break the widget
   }
 };
 
@@ -965,11 +1028,12 @@ Widget.prototype._t = function (key) {
 Widget.prototype._applyLanguage = function (lang) {
   var rtl = isRTL(lang);
 
-  // Update document-level attributes
-  document.documentElement.setAttribute('lang', lang);
-  document.documentElement.setAttribute('dir', rtl ? 'rtl' : 'ltr');
+  // Scope lang/dir to the widget root element only.
+  // The host page's <html lang> and <html dir> are never modified.
+  this._root.setAttribute('lang', lang);
+  this._root.setAttribute('dir', rtl ? 'rtl' : 'ltr');
 
-  // Update widget RTL modifier
+  // Update widget RTL modifier class
   if (rtl) {
     this._root.classList.add(RTL_MODIFIER);
   } else {
@@ -1124,7 +1188,18 @@ Widget.prototype._onTTSClick = function (e) {
 // ---------------------------------------------------------------------------
 
 /**
- * Open the accessibility menu panel and move focus to the first item.
+ * Open the accessibility menu panel and move focus to the first menu item.
+ *
+ * - No-op when the panel is already open or the widget has been destroyed.
+ * - Sets `aria-expanded="true"` on the toggle button.
+ * - Invokes the `onOpenMenu` callback if provided in options.
+ *
+ * @fires {CustomEvent} a11y:open - Dispatched on `window` after the panel opens.
+ *   `event.detail` is an empty object.
+ *
+ * @example
+ * var widget = AccessibilityWidget.init();
+ * widget.openMenu(); // programmatically open on page load
  */
 Widget.prototype.openMenu = function () {
   if (this._isOpen || this._destroyed) {
@@ -1142,10 +1217,22 @@ Widget.prototype.openMenu = function () {
   if (this._onOpenMenu) {
     this._onOpenMenu();
   }
+
+  this._emit('a11y:open', {});
 };
 
 /**
  * Close the accessibility menu panel.
+ *
+ * - No-op when the panel is already closed or the widget has been destroyed.
+ * - Sets `aria-expanded="false"` on the toggle button.
+ * - Invokes the `onCloseMenu` callback if provided in options.
+ *
+ * @fires {CustomEvent} a11y:close - Dispatched on `window` after the panel closes.
+ *   `event.detail` is an empty object.
+ *
+ * @example
+ * widget.closeMenu(); // programmatically close
  */
 Widget.prototype.closeMenu = function () {
   if (!this._isOpen || this._destroyed) {
@@ -1158,10 +1245,21 @@ Widget.prototype.closeMenu = function () {
   if (this._onCloseMenu) {
     this._onCloseMenu();
   }
+
+  this._emit('a11y:close', {});
 };
 
 /**
- * Toggle the menu open/closed.
+ * Toggle the menu panel between open and closed states.
+ *
+ * Delegates to {@link openMenu} when closed, {@link closeMenu} when open.
+ * Fires the corresponding `a11y:open` or `a11y:close` CustomEvent.
+ *
+ * @example
+ * // Bind to a custom button
+ * document.getElementById('my-a11y-btn').addEventListener('click', function () {
+ *   AccessibilityWidget.getInstance().toggleMenu();
+ * });
  */
 Widget.prototype.toggleMenu = function () {
   if (this._isOpen) {
@@ -1176,9 +1274,23 @@ Widget.prototype.toggleMenu = function () {
 // ---------------------------------------------------------------------------
 
 /**
- * Return a shallow copy of the current settings object.
+ * Return a shallow copy of the current feature settings.
  *
- * @returns {Record<string, *>}
+ * The returned object maps each **enabled** feature ID to its current value:
+ * - Toggle features → `boolean` (`true` = active, `false` = inactive)
+ * - Range features (e.g. `"fontSize"`) → `number` (current step, e.g. `2`)
+ *
+ * The object is a snapshot — subsequent changes to the widget are **not**
+ * reflected in previously returned copies.
+ *
+ * @returns {Record<string, boolean|number>}
+ *
+ * @example
+ * var settings = widget.getSettings();
+ * // { highContrast: false, darkMode: true, fontSize: 2, ... }
+ * if (settings.highContrast) {
+ *   console.log('High contrast is on');
+ * }
  */
 Widget.prototype.getSettings = function () {
   var copy = {};
@@ -1192,6 +1304,22 @@ Widget.prototype.getSettings = function () {
 /**
  * Reset all features to their defaults, clear persisted settings, and
  * update the UI.
+ *
+ * In detail, this method:
+ * 1. Deactivates Reading Guide and Text-to-Speech (removes overlay / listeners).
+ * 2. Removes all feature CSS classes from `document.body`.
+ * 3. Resets every feature in `_settings` to its `FeatureDefinition.default`.
+ * 4. Updates `aria-checked` and active-modifier class for all toggle items.
+ * 5. Resets the displayed value for all range items.
+ * 6. Removes the `localStorage` entry so the reset persists across page loads.
+ *
+ * @fires {CustomEvent} a11y:reset - Dispatched on `window` after the reset.
+ *   `event.detail.settings` is the post-reset snapshot (all feature defaults).
+ *
+ * @example
+ * document.getElementById('reset-btn').addEventListener('click', function () {
+ *   AccessibilityWidget.getInstance().resetAll();
+ * });
  */
 Widget.prototype.resetAll = function () {
   // Deactivate special features before resetting
@@ -1221,6 +1349,8 @@ Widget.prototype.resetAll = function () {
 
   // Clear storage
   clearSettings();
+
+  this._emit('a11y:reset', { settings: this.getSettings() });
 };
 
 // ---------------------------------------------------------------------------
@@ -1228,9 +1358,26 @@ Widget.prototype.resetAll = function () {
 // ---------------------------------------------------------------------------
 
 /**
- * Switch the widget and document language.
+ * Switch the widget to a different language.
  *
- * @param {string} code - BCP-47 language code (e.g. "en", "he").
+ * Updates all visible UI strings and adjusts layout for RTL scripts.
+ * The `lang` and `dir` attributes are scoped to the widget's own root
+ * element — **the host page's `<html>` element is never modified**.
+ *
+ * No-op when `code` already matches the active language.
+ *
+ * After switching, the new language is persisted to localStorage so it
+ * survives page reloads.
+ *
+ * @param {string} code - BCP-47 language code (e.g. `"en"`, `"he"`, `"ar"`).
+ *   Must be a code that has been registered — either built-in or via
+ *   `registerLanguage()`.  Unregistered codes fall back to English strings.
+ * @fires {CustomEvent} a11y:langchange - Dispatched on `window` after the
+ *   language is applied. `event.detail.language` is the new code.
+ *
+ * @example
+ * widget.setLanguage('he'); // switch to Hebrew (RTL layout)
+ * widget.setLanguage('en'); // switch back to English (LTR)
  */
 Widget.prototype.setLanguage = function (code) {
   if (code === this._language) {
@@ -1239,6 +1386,7 @@ Widget.prototype.setLanguage = function (code) {
   this._language = code;
   this._applyLanguage(code);
   this._saveState();
+  this._emit('a11y:langchange', { language: code });
 };
 
 // ---------------------------------------------------------------------------
@@ -1246,13 +1394,45 @@ Widget.prototype.setLanguage = function (code) {
 // ---------------------------------------------------------------------------
 
 /**
- * Remove the widget from the DOM and clean up all event listeners.
- * After calling `destroy()`, the instance should not be reused.
+ * Remove the widget from the DOM and release all resources.
+ *
+ * Performs teardown in the following order:
+ * 1. Dispatches `a11y:destroy` on `window` (before any DOM changes).
+ * 2. Sets the internal `_destroyed` guard to prevent re-entry.
+ * 3. Removes all DOM event listeners (toggle, panel, document-level).
+ * 4. Deactivates Reading Guide (removes overlay element and mousemove listener).
+ * 5. Deactivates Text-to-Speech (cancels speech and removes click listener).
+ * 6. Resets all feature CSS classes on `document.body`.
+ * 7. Restores the original `localStorage` storage key.
+ * 8. Removes the widget root element from `document.body`.
+ * 9. Nulls out all internal DOM references to aid garbage collection.
+ *
+ * **Safe to call multiple times** — subsequent calls after the first are
+ * silently ignored.
+ *
+ * Prefer {@link AccessibilityWidget.destroy} over calling this method
+ * directly so the singleton reference is also cleared.
+ *
+ * @fires {CustomEvent} a11y:destroy - Dispatched on `window` at step 1,
+ *   before any teardown occurs. `event.detail` is an empty object.
+ *
+ * @example
+ * // In a SPA route-change cleanup handler:
+ * AccessibilityWidget.destroy();
+ *
+ * @example
+ * // Calling directly on the instance (also clears the singleton ref):
+ * var widget = AccessibilityWidget.init();
+ * window.addEventListener('a11y:destroy', function () {
+ *   console.log('Widget is being removed');
+ * });
+ * widget.destroy();
  */
 Widget.prototype.destroy = function () {
   if (this._destroyed) {
     return;
   }
+  this._emit('a11y:destroy', {});
   this._destroyed = true;
   this._detachEvents();
 
@@ -1268,18 +1448,6 @@ Widget.prototype.destroy = function () {
   // Restore original storage key
   if (this._originalStorageKey) {
     setStorageKey(this._originalStorageKey);
-  }
-
-  // Restore original document lang/dir
-  if (this._originalLang !== null) {
-    document.documentElement.setAttribute('lang', this._originalLang);
-  } else {
-    document.documentElement.removeAttribute('lang');
-  }
-  if (this._originalDir !== null) {
-    document.documentElement.setAttribute('dir', this._originalDir);
-  } else {
-    document.documentElement.removeAttribute('dir');
   }
 
   // Remove the DOM node
@@ -1300,6 +1468,7 @@ Widget.prototype.destroy = function () {
   this._itemElements = {};
   this._rangeValueEls = {};
   this._langSelect = null;
+  this._statementLinkEl = null;
 };
 
 export default Widget;

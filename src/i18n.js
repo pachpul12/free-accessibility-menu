@@ -44,6 +44,7 @@ const translations = {
     language: 'Language',
     disclaimer:
       'This widget does not guarantee full accessibility compliance.',
+    accessibilityStatementLink: 'Accessibility Statement',
   },
 
   he: {
@@ -71,6 +72,7 @@ const translations = {
     language: '\u05E9\u05E4\u05D4',
     disclaimer:
       '\u05EA\u05D5\u05E1\u05E3 \u05D6\u05D4 \u05D0\u05D9\u05E0\u05D5 \u05DE\u05D1\u05D8\u05D9\u05D7 \u05E2\u05DE\u05D9\u05D3\u05D4 \u05DE\u05DC\u05D0\u05D4 \u05D1\u05EA\u05E7\u05E0\u05D9 \u05E0\u05D2\u05D9\u05E9\u05D5\u05EA.',
+    accessibilityStatementLink: '\u05D4\u05E6\u05D4\u05E8\u05EA \u05E0\u05D2\u05D9\u05E9\u05D5\u05EA',
   },
 
   zh: {
@@ -1173,18 +1175,41 @@ export function getNativeName(code) {
 }
 
 /**
- * Register (or overwrite) a full set of translations for a language.
+ * Register (or overwrite) translations for a language.
  *
- * This allows consumers to add support for new locales at runtime without
- * modifying the source. The supplied object is merged into the registry so
- * that any missing keys will still fall back to the English defaults when
- * retrieved via `getTranslation`.
+ * Allows consumers to add new locales at runtime without modifying the source.
+ * The supplied object is **merged** into any existing registry entry for that
+ * code — so you can supply only the keys that differ from English and the rest
+ * will fall back gracefully via `getTranslation`.
  *
- * @param {string} code          - BCP-47 language code (e.g. "fr", "de").
- * @param {Record<string, string>} newTranslations - Key/value pairs for
- *   the language. Keys should match those used in the built-in `en` locale.
+ * Call this **before** `AccessibilityWidget.init()` (or before calling
+ * `setLanguage()`) so the translations are available when the widget renders.
+ *
+ * Required translation keys (matching the built-in `en` locale):
+ * `nativeName`, `menuTitle`, `highContrast`, `darkMode`, `fontSize`,
+ * `increaseFontSize`, `decreaseFontSize`, `resetFontSize`, `dyslexiaFont`,
+ * `underlineLinks`, `focusOutline`, `hideImages`, `textSpacing`,
+ * `pauseAnimations`, `largeCursor`, `highlightHeadings`, `invertColors`,
+ * `readingGuide`, `textToSpeech`, `resetAll`, `closeMenu`, `language`,
+ * `disclaimer`, `accessibilityStatementLink`.
+ *
+ * @param {string}                 code            - BCP-47 language code (e.g. `"it"`, `"ko"`).
+ * @param {Record<string, string>} newTranslations - Key/value translation pairs.
  * @throws {Error} If `code` is not a non-empty string.
  * @throws {Error} If `newTranslations` is not a plain object.
+ *
+ * @example
+ * import { registerLanguage } from 'free-accessibility-menu/src/i18n.js';
+ *
+ * registerLanguage('it', {
+ *   nativeName: 'Italiano',
+ *   menuTitle: 'Menu Accessibilità',
+ *   resetAll: 'Ripristina tutto',
+ *   closeMenu: 'Chiudi menu',
+ *   // ... other keys; missing ones fall back to English
+ * });
+ *
+ * AccessibilityWidget.init({ defaultLanguage: 'it' });
  */
 export function registerLanguage(code, newTranslations) {
   if (typeof code !== 'string' || code.length === 0) {

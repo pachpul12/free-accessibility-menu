@@ -128,14 +128,22 @@ describe('examples/index-init-language.html: widget initialization in Hebrew', (
     }).not.toThrow();
   });
 
-  test('document lang is set to "he" after init', () => {
+  test('widget root lang is set to "he" after init', () => {
     AccessibilityWidget.init(EXAMPLE_OPTIONS);
-    expect(document.documentElement.getAttribute('lang')).toBe('he');
+    var root = document.querySelector('.a11y-widget');
+    expect(root.getAttribute('lang')).toBe('he');
   });
 
-  test('document dir is set to "rtl" after init', () => {
+  test('widget root dir is set to "rtl" after init', () => {
     AccessibilityWidget.init(EXAMPLE_OPTIONS);
-    expect(document.documentElement.getAttribute('dir')).toBe('rtl');
+    var root = document.querySelector('.a11y-widget');
+    expect(root.getAttribute('dir')).toBe('rtl');
+  });
+
+  test('host page document.documentElement.lang is never changed by widget', () => {
+    var originalLang = document.documentElement.getAttribute('lang');
+    AccessibilityWidget.init(EXAMPLE_OPTIONS);
+    expect(document.documentElement.getAttribute('lang')).toBe(originalLang);
   });
 
   test('language select has "he" selected after init', () => {
@@ -165,11 +173,12 @@ describe('examples/index-init-language.html: widget initialization in Hebrew', (
     expect(title.textContent).toBe('\u05EA\u05E4\u05E8\u05D9\u05D8 \u05E0\u05D2\u05D9\u05E9\u05D5\u05EA');
   });
 
-  test('switching to English via setLanguage updates lang and dir', () => {
+  test('switching to English via setLanguage updates widget root lang and dir', () => {
     var w = AccessibilityWidget.init(EXAMPLE_OPTIONS);
     w.setLanguage('en');
-    expect(document.documentElement.getAttribute('lang')).toBe('en');
-    expect(document.documentElement.getAttribute('dir')).toBe('ltr');
+    var root = document.querySelector('.a11y-widget');
+    expect(root.getAttribute('lang')).toBe('en');
+    expect(root.getAttribute('dir')).toBe('ltr');
   });
 
   test('switching to English via the select updates the widget language', () => {
@@ -178,7 +187,8 @@ describe('examples/index-init-language.html: widget initialization in Hebrew', (
     var sel = document.querySelector('.a11y-widget__lang-select');
     sel.value = 'en';
     sel.dispatchEvent(new Event('change', { bubbles: true }));
-    expect(document.documentElement.getAttribute('lang')).toBe('en');
+    var root = document.querySelector('.a11y-widget');
+    expect(root.getAttribute('lang')).toBe('en');
     expect(sel.value).toBe('en');
   });
 });

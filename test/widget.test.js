@@ -677,7 +677,7 @@ describe('Keyboard Navigation', () => {
     var sel = getLangSelect();
     sel.value = 'he';
     sel.dispatchEvent(new Event('change', { bubbles: true }));
-    expect(document.documentElement.getAttribute('lang')).toBe('he');
+    expect(getRoot().getAttribute('lang')).toBe('he');
   });
 });
 
@@ -694,14 +694,14 @@ describe('Language Switching', () => {
 
   test('setLanguage changes the active language', () => {
     instance.setLanguage('he');
-    expect(document.documentElement.getAttribute('lang')).toBe('he');
+    expect(getRoot().getAttribute('lang')).toBe('he');
   });
 
   test('selecting Hebrew in language select switches language', () => {
     var sel = getLangSelect();
     sel.value = 'he';
     sel.dispatchEvent(new Event('change', { bubbles: true }));
-    expect(document.documentElement.getAttribute('lang')).toBe('he');
+    expect(getRoot().getAttribute('lang')).toBe('he');
   });
 
   test('title text updates when language changes', () => {
@@ -727,11 +727,19 @@ describe('Language Switching', () => {
     expect(getRoot().classList.contains('a11y-widget--rtl')).toBe(false);
   });
 
-  test('document dir attribute updates', () => {
+  test('widget root dir attribute updates', () => {
     instance.setLanguage('he');
-    expect(document.documentElement.getAttribute('dir')).toBe('rtl');
+    expect(getRoot().getAttribute('dir')).toBe('rtl');
     instance.setLanguage('en');
-    expect(document.documentElement.getAttribute('dir')).toBe('ltr');
+    expect(getRoot().getAttribute('dir')).toBe('ltr');
+  });
+
+  test('host page document.documentElement.lang is never modified', () => {
+    var originalLang = document.documentElement.getAttribute('lang');
+    instance.setLanguage('he');
+    expect(document.documentElement.getAttribute('lang')).toBe(originalLang);
+    instance.setLanguage('en');
+    expect(document.documentElement.getAttribute('lang')).toBe(originalLang);
   });
 
   test('language select value updates when language changes', () => {
@@ -821,8 +829,8 @@ describe('State Persistence', () => {
       JSON.stringify({ _language: 'he' })
     );
     AccessibilityWidget.init();
-    expect(document.documentElement.getAttribute('lang')).toBe('he');
-    expect(document.documentElement.getAttribute('dir')).toBe('rtl');
+    expect(getRoot().getAttribute('lang')).toBe('he');
+    expect(getRoot().getAttribute('dir')).toBe('rtl');
   });
 
   test('settings survive destroy and re-init', () => {
@@ -919,7 +927,7 @@ describe('Reset', () => {
 describe('Configuration Options', () => {
   test('defaultLanguage sets initial language', () => {
     AccessibilityWidget.init({ defaultLanguage: 'he' });
-    expect(document.documentElement.getAttribute('lang')).toBe('he');
+    expect(getRoot().getAttribute('lang')).toBe('he');
     expect(getRoot().classList.contains('a11y-widget--rtl')).toBe(true);
   });
 
@@ -991,7 +999,7 @@ describe('Configuration Options', () => {
   test('init with no options uses defaults', () => {
     AccessibilityWidget.init();
     expect(getRoot()).not.toBeNull();
-    expect(document.documentElement.getAttribute('lang')).toBe('en');
+    expect(getRoot().getAttribute('lang')).toBe('en');
   });
 });
 
@@ -1019,24 +1027,29 @@ describe('Destroy cleanup', () => {
     expect(document.body.classList.contains('a11y-font-2')).toBe(false);
   });
 
-  test('destroy restores original lang/dir attributes', () => {
+  test('destroy does not alter host page lang/dir attributes', () => {
     document.documentElement.setAttribute('lang', 'fr');
     document.documentElement.setAttribute('dir', 'ltr');
     var w = AccessibilityWidget.init();
     w.setLanguage('he');
-    expect(document.documentElement.getAttribute('lang')).toBe('he');
-    expect(document.documentElement.getAttribute('dir')).toBe('rtl');
+    // Widget root has the language; host page is untouched
+    expect(getRoot().getAttribute('lang')).toBe('he');
+    expect(getRoot().getAttribute('dir')).toBe('rtl');
+    expect(document.documentElement.getAttribute('lang')).toBe('fr');
     w.destroy();
+    // Host page lang/dir still untouched after destroy
     expect(document.documentElement.getAttribute('lang')).toBe('fr');
     expect(document.documentElement.getAttribute('dir')).toBe('ltr');
   });
 
-  test('destroy removes lang/dir if they were not set originally', () => {
+  test('widget sets lang/dir on its own root, not on document.documentElement', () => {
     document.documentElement.removeAttribute('lang');
     document.documentElement.removeAttribute('dir');
-    var w = AccessibilityWidget.init();
-    expect(document.documentElement.getAttribute('lang')).toBe('en');
-    w.destroy();
+    AccessibilityWidget.init();
+    // Widget root gets 'en' / 'ltr'
+    expect(getRoot().getAttribute('lang')).toBe('en');
+    expect(getRoot().getAttribute('dir')).toBe('ltr');
+    // Host page remains untouched
     expect(document.documentElement.getAttribute('lang')).toBeNull();
     expect(document.documentElement.getAttribute('dir')).toBeNull();
   });
@@ -1136,13 +1149,13 @@ describe('Edge Cases', () => {
     var w = AccessibilityWidget.init();
     w.setLanguage('he');
     w.resetAll();
-    expect(document.documentElement.getAttribute('lang')).toBe('he');
+    expect(getRoot().getAttribute('lang')).toBe('he');
   });
 
   test('init with empty options is same as no options', () => {
     AccessibilityWidget.init({});
     expect(getRoot()).not.toBeNull();
-    expect(document.documentElement.getAttribute('lang')).toBe('en');
+    expect(getRoot().getAttribute('lang')).toBe('en');
   });
 
   test('getSettings returns a shallow copy', () => {
@@ -1235,8 +1248,8 @@ describe('Schema Validation on Load', () => {
       'a11yWidgetSettings',
       JSON.stringify({ _language: 123 })
     );
-    var w = AccessibilityWidget.init();
-    expect(document.documentElement.getAttribute('lang')).toBe('en');
+    AccessibilityWidget.init();
+    expect(getRoot().getAttribute('lang')).toBe('en');
   });
 
   test('empty language string is ignored', () => {
@@ -1244,8 +1257,8 @@ describe('Schema Validation on Load', () => {
       'a11yWidgetSettings',
       JSON.stringify({ _language: '' })
     );
-    var w = AccessibilityWidget.init();
-    expect(document.documentElement.getAttribute('lang')).toBe('en');
+    AccessibilityWidget.init();
+    expect(getRoot().getAttribute('lang')).toBe('en');
   });
 
   test('array in localStorage is ignored (not a plain object)', () => {
