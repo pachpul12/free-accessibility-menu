@@ -107,6 +107,30 @@ function capitalise(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
+/**
+ * Parse a keyboard shortcut string (e.g. `"alt+a"`) into its component parts.
+ *
+ * @param {string|null|false} shortcut
+ * @returns {{ alt: boolean, ctrl: boolean, shift: boolean, meta: boolean, key: string }|null}
+ */
+function parseShortcut(shortcut) {
+  if (!shortcut || typeof shortcut !== 'string') {
+    return null;
+  }
+  var parts = shortcut.toLowerCase().split('+');
+  var key = parts[parts.length - 1];
+  if (!key) {
+    return null;
+  }
+  return {
+    alt: parts.indexOf('alt') !== -1,
+    ctrl: parts.indexOf('ctrl') !== -1,
+    shift: parts.indexOf('shift') !== -1,
+    meta: parts.indexOf('meta') !== -1,
+    key: key,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Widget class
 // ---------------------------------------------------------------------------
@@ -139,6 +163,8 @@ function Widget(options) {
   this._toggleIconUrl = options.toggleIconUrl || TOGGLE_ICON_PNG;
   this._toggleIconHoverUrl = options.toggleIconHoverUrl || TOGGLE_ICON_HOVER_PNG;
   this._accessibilityStatementUrl = options.accessibilityStatementUrl || null;
+  this._keyboardShortcut = options.keyboardShortcut !== undefined ? options.keyboardShortcut : 'alt+a';
+  this._parsedShortcut = parseShortcut(this._keyboardShortcut);
 
   // Determine which features are enabled
   this._enabledFeatures = this._resolveEnabledFeatures(options.features);
@@ -168,6 +194,12 @@ function Widget(options) {
   this._rangeValueEls = {};   // featureId -> value display element
   this._langSelect = null;    // <select> element for language switcher
   this._statementLinkEl = null; // <a> for accessibility statement (optional)
+
+  // -- Color blindness SVG filter element ------------------------------------
+  this._colorBlindSvgEl = null;
+
+  // -- Zoom lock warning element (optional, shown if viewport blocks zoom) ---
+  this._zoomWarnEl = null;
 
   // -- Reading Guide state ---------------------------------------------------
   this._readingGuideEl = null;
@@ -306,12 +338,19 @@ Widget.prototype._buildDOM = function () {
   this._root.setAttribute('data-position', this._position);
 
   // --- Toggle button -------------------------------------------------------
-  this._toggleBtn = createElement('button', 'a11y-widget__toggle', {
+  var toggleAttrs = {
     'aria-haspopup': 'menu',
     'aria-expanded': 'false',
     'aria-label': this._t('menuTitle'),
     'aria-controls': 'a11y-widget-panel',
-  });
+  };
+  if (this._keyboardShortcut) {
+    toggleAttrs['aria-keyshortcuts'] = this._keyboardShortcut
+      .split('+')
+      .map(function (p) { return p.charAt(0).toUpperCase() + p.slice(1); })
+      .join('+');
+  }
+  this._toggleBtn = createElement('button', 'a11y-widget__toggle', toggleAttrs);
   var normalIconUrl = this._toggleIconUrl;
   var hoverIconUrl = this._toggleIconHoverUrl;
 
@@ -399,6 +438,16 @@ Widget.prototype._buildDOM = function () {
 
   // Append to body
   document.body.appendChild(this._root);
+
+  // Inject SVG color-blind filter definitions
+  this._injectColorBlindFilters();
+
+  // Show zoom-lock warning notice if the page restricts user scaling
+  if (this._checkViewportScaling()) {
+    this._zoomWarnEl = createElement('div', 'a11y-widget__zoom-warn');
+    this._zoomWarnEl.textContent = this._t('zoomLockWarning');
+    this._panel.insertBefore(this._zoomWarnEl, this._contentEl);
+  }
 };
 
 /**
@@ -466,16 +515,105 @@ Widget.prototype._buildLanguageSection = function (parent) {
  * @param {string}      groupName
  * @param {HTMLElement}  parent
  */
+/**
+ * Inject a hidden `<svg>` element with color-blind simulation filter
+ * definitions into `document.head`.  Each filter is referenced by a CSS
+ * `filter: url(#a11y-filter-{featureId})` rule.
+ *
+ * Called once from `_buildDOM`; cleaned up in `destroy`.
+ */
+Widget.prototype._injectColorBlindFilters = function () {
+  if (this._colorBlindSvgEl) {
+    return;
+  }
+  var svgNS = 'http://www.w3.org/2000/svg';
+  var svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden';
+  svg.id = 'a11y-color-blind-filters';
+
+  var defs = document.createElementNS(svgNS, 'defs');
+
+  var filters = [
+    {
+      id: 'a11y-filter-deuteranopia',
+      matrix: '0.625 0.375 0 0 0  0.700 0.300 0 0 0  0 0.300 0.700 0 0  0 0 0 1 0',
+    },
+    {
+      id: 'a11y-filter-protanopia',
+      matrix: '0.567 0.433 0 0 0  0.558 0.442 0 0 0  0 0.242 0.758 0 0  0 0 0 1 0',
+    },
+    {
+      id: 'a11y-filter-tritanopia',
+      matrix: '0.950 0.050 0 0 0  0 0.433 0.567 0 0  0 0.475 0.525 0 0  0 0 0 1 0',
+    },
+  ];
+
+  for (var i = 0; i < filters.length; i++) {
+    var filter = document.createElementNS(svgNS, 'filter');
+    filter.setAttribute('id', filters[i].id);
+    filter.setAttribute('color-interpolation-filters', 'linearRGB');
+    var feMatrix = document.createElementNS(svgNS, 'feColorMatrix');
+    feMatrix.setAttribute('type', 'matrix');
+    feMatrix.setAttribute('values', filters[i].matrix);
+    filter.appendChild(feMatrix);
+    defs.appendChild(filter);
+  }
+
+  svg.appendChild(defs);
+  document.head.appendChild(svg);
+  this._colorBlindSvgEl = svg;
+};
+
+/**
+ * Inspect the page's `<meta name="viewport">` for accessibility-hostile
+ * zoom-lock settings (`user-scalable=no` / `maximum-scale` < 5).
+ * Emits `console.warn` when a violation is found.
+ *
+ * @returns {boolean} `true` if zoom is locked, `false` otherwise.
+ */
+Widget.prototype._checkViewportScaling = function () {
+  var meta = document.querySelector('meta[name="viewport"]');
+  if (!meta) {
+    return false;
+  }
+  var content = (meta.getAttribute('content') || '').toLowerCase();
+  var parts = content.split(',');
+  var map = {};
+  for (var i = 0; i < parts.length; i++) {
+    var pair = parts[i].trim().split('=');
+    if (pair.length === 2) {
+      map[pair[0].trim()] = pair[1].trim();
+    }
+  }
+  var userScalable = map['user-scalable'];
+  var zoomDisabled = userScalable === 'no' || userScalable === '0';
+  var maxScale = parseFloat(map['maximum-scale']);
+  var maxScaleTooLow = !isNaN(maxScale) && maxScale < 5;
+  if (zoomDisabled || maxScaleTooLow) {
+    console.warn(
+      '[AccessibilityWidget] Zoom lock detected in <meta name="viewport">. ' +
+      'user-scalable=no or maximum-scale < 5 violates WCAG 2.1 SC 1.4.4 ' +
+      '(Resize Text). Remove these constraints to improve accessibility.'
+    );
+    return true;
+  }
+  return false;
+};
+
 Widget.prototype._buildGroupSection = function (groupName, parent) {
+  var translatedLabel = this._t(groupName);
   var section = createElement('div', 'a11y-widget__section', {
     'role': 'group',
-    'aria-label': capitalise(groupName),
+    'aria-label': translatedLabel,
+    'data-group': groupName,
   });
 
   var title = createElement('div', 'a11y-widget__section-title', {
     'role': 'presentation',
+    'data-i18n': groupName,
   });
-  title.textContent = capitalise(groupName);
+  title.textContent = translatedLabel;
   section.appendChild(title);
 
   var features = this._enabledFeatures.filter(function (f) {
@@ -528,13 +666,17 @@ Widget.prototype._buildFeatureItem = function (feature) {
   item.appendChild(labelSpan);
 
   if (isRange) {
-    // Font-size controls
+    // Range controls (font size, line height, letter spacing, word spacing, …)
     var controls = createElement('div', 'a11y-widget__font-controls');
+
+    var decKey = 'decrease' + capitalise(feature.id);
+    var incKey = 'increase' + capitalise(feature.id);
 
     var minusBtn = createElement('button', 'a11y-widget__font-btn', {
       'data-action': 'decrease',
       'data-feature': feature.id,
-      'aria-label': this._t('decreaseFontSize'),
+      'data-i18n-action': decKey,
+      'aria-label': this._t(decKey),
       'type': 'button',
     });
     minusBtn.appendChild(parseSVG(MINUS_ICON_SVG));
@@ -542,12 +684,14 @@ Widget.prototype._buildFeatureItem = function (feature) {
     var valueSpan = createElement('span', 'a11y-widget__font-value');
     valueSpan.textContent = String(currentValue);
     valueSpan.setAttribute('aria-live', 'polite');
+    valueSpan.setAttribute('data-feature', feature.id);
     this._rangeValueEls[feature.id] = valueSpan;
 
     var plusBtn = createElement('button', 'a11y-widget__font-btn', {
       'data-action': 'increase',
       'data-feature': feature.id,
-      'aria-label': this._t('increaseFontSize'),
+      'data-i18n-action': incKey,
+      'aria-label': this._t(incKey),
       'type': 'button',
     });
     plusBtn.appendChild(parseSVG(PLUS_ICON_SVG));
@@ -748,6 +892,22 @@ Widget.prototype._onDocumentKeydown = function (e) {
   if (e.key === 'Escape' && this._isOpen) {
     this.closeMenu();
     this._toggleBtn.focus();
+    return;
+  }
+
+  // Keyboard shortcut to toggle menu (default: Alt+A)
+  if (this._parsedShortcut) {
+    var s = this._parsedShortcut;
+    if (
+      e.key.toLowerCase() === s.key &&
+      e.altKey === s.alt &&
+      e.ctrlKey === s.ctrl &&
+      e.shiftKey === s.shift &&
+      e.metaKey === s.meta
+    ) {
+      e.preventDefault();
+      this.toggleMenu();
+    }
   }
 };
 
@@ -883,6 +1043,21 @@ Widget.prototype._toggleFeature = function (featureId) {
 
   applyFeature(featureId, newValue);
   this._updateItemState(featureId, newValue);
+
+  // Mutual exclusivity: disable conflicting features when enabling this one
+  if (newValue) {
+    var def = getFeature(featureId);
+    if (def && def.conflictsWith) {
+      for (var c = 0; c < def.conflictsWith.length; c++) {
+        var conflictId = def.conflictsWith[c];
+        if (this._settings[conflictId]) {
+          this._settings[conflictId] = false;
+          applyFeature(conflictId, false);
+          this._updateItemState(conflictId, false);
+        }
+      }
+    }
+  }
 
   // Special handling for Reading Guide
   if (featureId === 'readingGuide') {
@@ -1056,14 +1231,23 @@ Widget.prototype._applyLanguage = function (lang) {
     el.textContent = this._t(key);
   }
 
-  // Update font control labels
-  var decreaseBtns = this._root.querySelectorAll('[data-action="decrease"]');
-  for (var d = 0; d < decreaseBtns.length; d++) {
-    decreaseBtns[d].setAttribute('aria-label', this._t('decreaseFontSize'));
+  // Update range control labels (each button carries its own i18n key)
+  var actionBtns = this._root.querySelectorAll('[data-i18n-action]');
+  for (var a = 0; a < actionBtns.length; a++) {
+    var actionKey = actionBtns[a].getAttribute('data-i18n-action');
+    actionBtns[a].setAttribute('aria-label', this._t(actionKey));
   }
-  var increaseBtns = this._root.querySelectorAll('[data-action="increase"]');
-  for (var u = 0; u < increaseBtns.length; u++) {
-    increaseBtns[u].setAttribute('aria-label', this._t('increaseFontSize'));
+
+  // Update group section aria-labels
+  var groupSections = this._root.querySelectorAll('[data-group]');
+  for (var g = 0; g < groupSections.length; g++) {
+    var groupName = groupSections[g].getAttribute('data-group');
+    groupSections[g].setAttribute('aria-label', this._t(groupName));
+  }
+
+  // Update zoom-lock warning text if visible
+  if (this._zoomWarnEl) {
+    this._zoomWarnEl.textContent = this._t('zoomLockWarning');
   }
 
   // Update language select value
@@ -1302,6 +1486,130 @@ Widget.prototype.getSettings = function () {
 };
 
 /**
+ * Programmatically set a single feature to an explicit value.
+ *
+ * - For **toggle** features: coerces `value` to boolean; no-ops if the value
+ *   is already equal to the current state.
+ * - For **range** features: coerces `value` to a number and clamps it to
+ *   `[feature.min, feature.max]`; no-ops if already at that clamped value.
+ * - Applies the DOM change, updates the panel UI, persists to localStorage,
+ *   fires `onToggle` callback, and dispatches the `a11y:toggle` CustomEvent —
+ *   exactly the same side-effects as user interaction.
+ *
+ * No-ops when the widget has been destroyed or the feature ID is unknown.
+ *
+ * @param {string}         featureId - One of the 14 built-in feature IDs.
+ * @param {boolean|number} value     - Desired value.
+ * @fires {CustomEvent} a11y:toggle
+ *
+ * @example
+ * widget.setFeature('darkMode', true);   // enable dark mode
+ * widget.setFeature('fontSize', 3);      // set font size to step 3
+ * widget.setFeature('highContrast', false); // disable high contrast
+ */
+Widget.prototype.setFeature = function (featureId, value) {
+  if (this._destroyed) {
+    return;
+  }
+  var feature = getFeature(featureId);
+  if (!feature) {
+    return;
+  }
+
+  if (feature.type === 'toggle') {
+    var newBool = !!value;
+    if (!!this._settings[featureId] === newBool) {
+      return;
+    }
+    this._settings[featureId] = newBool;
+    applyFeature(featureId, newBool);
+    this._updateItemState(featureId, newBool);
+
+    // Mutual exclusivity
+    if (newBool && feature.conflictsWith) {
+      for (var ci = 0; ci < feature.conflictsWith.length; ci++) {
+        var cId = feature.conflictsWith[ci];
+        if (this._settings[cId]) {
+          this._settings[cId] = false;
+          applyFeature(cId, false);
+          this._updateItemState(cId, false);
+        }
+      }
+    }
+
+    if (featureId === 'readingGuide') {
+      if (newBool) {
+        this._activateReadingGuide();
+      } else {
+        this._deactivateReadingGuide();
+      }
+    }
+    if (featureId === 'textToSpeech') {
+      if (newBool) {
+        this._activateTTS();
+      } else {
+        this._deactivateTTS();
+      }
+    }
+
+    this._saveState();
+    if (this._onToggle) {
+      this._onToggle(featureId, newBool);
+    }
+    this._emit('a11y:toggle', { featureId: featureId, value: newBool, settings: this.getSettings() });
+    return;
+  }
+
+  if (feature.type === 'range') {
+    var numVal = Number(value);
+    if (isNaN(numVal)) {
+      return;
+    }
+    numVal = Math.max(feature.min, Math.min(feature.max, numVal));
+    if (this._settings[featureId] === numVal) {
+      return;
+    }
+    this._settings[featureId] = numVal;
+    applyFeature(featureId, numVal);
+
+    var valueEl = this._rangeValueEls[featureId];
+    if (valueEl) {
+      valueEl.textContent = String(numVal);
+    }
+
+    this._saveState();
+    if (this._onToggle) {
+      this._onToggle(featureId, numVal);
+    }
+    this._emit('a11y:toggle', { featureId: featureId, value: numVal, settings: this.getSettings() });
+  }
+};
+
+/**
+ * Apply multiple feature values in one call.
+ *
+ * Iterates over the supplied `settings` object and calls
+ * {@link Widget#setFeature} for each key/value pair.  Unknown feature IDs
+ * and invalid values are silently skipped (delegated to `setFeature`).
+ *
+ * No-ops when the widget has been destroyed.
+ *
+ * @param {Record<string, boolean|number>} settings - Map of feature ID → value.
+ *
+ * @example
+ * widget.applySettings({ darkMode: true, fontSize: 2, highContrast: false });
+ */
+Widget.prototype.applySettings = function (settings) {
+  if (this._destroyed || !settings || typeof settings !== 'object') {
+    return;
+  }
+  var keys = Object.keys(settings);
+  for (var i = 0; i < keys.length; i++) {
+    this.setFeature(keys[i], settings[keys[i]]);
+  }
+};
+
+/**
  * Reset all features to their defaults, clear persisted settings, and
  * update the UI.
  *
@@ -1455,6 +1763,11 @@ Widget.prototype.destroy = function () {
     this._root.parentNode.removeChild(this._root);
   }
 
+  // Remove injected color-blind SVG filters
+  if (this._colorBlindSvgEl && this._colorBlindSvgEl.parentNode) {
+    this._colorBlindSvgEl.parentNode.removeChild(this._colorBlindSvgEl);
+  }
+
   // Null out references
   this._root = null;
   this._toggleBtn = null;
@@ -1469,6 +1782,8 @@ Widget.prototype.destroy = function () {
   this._rangeValueEls = {};
   this._langSelect = null;
   this._statementLinkEl = null;
+  this._colorBlindSvgEl = null;
+  this._zoomWarnEl = null;
 };
 
 export default Widget;

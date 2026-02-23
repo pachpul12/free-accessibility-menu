@@ -12,8 +12,8 @@ function simulateClick(element) {
   element.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 }
 
-function simulateKeydown(element, key) {
-  element.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+function simulateKeydown(element, key, extra) {
+  element.dispatchEvent(new KeyboardEvent('keydown', Object.assign({ key, bubbles: true }, extra)));
 }
 
 function getRoot() {
@@ -79,8 +79,12 @@ var TOGGLE_FEATURE_IDS = [
   'invertColors',
   'readingGuide',
   'textToSpeech',
+  'focusMode',
+  'deuteranopia',
+  'protanopia',
+  'tritanopia',
 ];
-var ALL_FEATURE_IDS = TOGGLE_FEATURE_IDS.concat(['fontSize']);
+var ALL_FEATURE_IDS = TOGGLE_FEATURE_IDS.concat(['fontSize', 'lineHeight', 'letterSpacing', 'wordSpacing']);
 var FEATURE_CSS = {
   highContrast: 'a11y-high-contrast',
   darkMode: 'a11y-dark-mode',
@@ -95,6 +99,10 @@ var FEATURE_CSS = {
   invertColors: 'a11y-invert-colors',
   readingGuide: 'a11y-reading-guide',
   textToSpeech: 'a11y-text-to-speech',
+  focusMode: 'a11y-focus-mode',
+  deuteranopia: 'a11y-deuteranopia',
+  protanopia: 'a11y-protanopia',
+  tritanopia: 'a11y-tritanopia',
 };
 
 // ---------------------------------------------------------------------------
@@ -114,8 +122,8 @@ afterEach(() => {
 // ===========================================================================
 
 describe('Initialization & API', () => {
-  test('AccessibilityWidget.version is "1.0.0"', () => {
-    expect(AccessibilityWidget.version).toBe('1.0.0');
+  test('AccessibilityWidget.version is "2.0.0"', () => {
+    expect(AccessibilityWidget.version).toBe('2.0.0');
   });
 
   test('init() returns a widget instance', () => {
@@ -209,7 +217,7 @@ describe('DOM Structure', () => {
     expect(getTitle().textContent).toBe('Accessibility Menu');
   });
 
-  test('all 14 features rendered as menu items', () => {
+  test('all 21 features rendered as menu items', () => {
     ALL_FEATURE_IDS.forEach((id) => {
       expect(getFeatureItem(id)).not.toBeNull();
     });
@@ -1327,6 +1335,13 @@ describe('All features disabled edge case', () => {
         invertColors: false,
         readingGuide: false,
         textToSpeech: false,
+        focusMode: false,
+        lineHeight: false,
+        letterSpacing: false,
+        wordSpacing: false,
+        deuteranopia: false,
+        protanopia: false,
+        tritanopia: false,
       },
     });
     expect(getRoot()).not.toBeNull();
@@ -1832,6 +1847,13 @@ describe('Coverage - Edge Cases', () => {
         invertColors: false,
         readingGuide: false,
         textToSpeech: false,
+        focusMode: false,
+        lineHeight: false,
+        letterSpacing: false,
+        wordSpacing: false,
+        deuteranopia: false,
+        protanopia: false,
+        tritanopia: false,
       },
     });
     w.openMenu();
@@ -1840,5 +1862,402 @@ describe('Coverage - Edge Cases', () => {
     expect(() => {
       simulateKeydown(panel, 'ArrowDown');
     }).not.toThrow();
+  });
+});
+
+// ===========================================================================
+// 21. setFeature() and applySettings() API
+// ===========================================================================
+
+describe('setFeature() and applySettings()', () => {
+  test('setFeature() enables a toggle feature', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('highContrast', true);
+    expect(w.getSettings().highContrast).toBe(true);
+    expect(document.body.classList.contains('a11y-high-contrast')).toBe(true);
+  });
+
+  test('setFeature() disables a toggle feature', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('highContrast', true);
+    w.setFeature('highContrast', false);
+    expect(w.getSettings().highContrast).toBe(false);
+    expect(document.body.classList.contains('a11y-high-contrast')).toBe(false);
+  });
+
+  test('setFeature() sets a range feature value', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('fontSize', 3);
+    expect(w.getSettings().fontSize).toBe(3);
+    expect(document.body.classList.contains('a11y-font-3')).toBe(true);
+  });
+
+  test('setFeature() clamps range value to max', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('fontSize', 99);
+    expect(w.getSettings().fontSize).toBe(5);
+  });
+
+  test('setFeature() clamps range value to min', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('fontSize', -5);
+    expect(w.getSettings().fontSize).toBe(0);
+  });
+
+  test('setFeature() ignores unknown feature id', () => {
+    var w = AccessibilityWidget.init();
+    expect(() => w.setFeature('nonExistentFeature', true)).not.toThrow();
+  });
+
+  test('setFeature() updates aria-checked on menu item', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('darkMode', true);
+    var item = getFeatureItem('darkMode');
+    expect(item.getAttribute('aria-checked')).toBe('true');
+  });
+
+  test('setFeature() fires onToggle callback', () => {
+    var cb = jest.fn();
+    var w = AccessibilityWidget.init({ onToggle: cb });
+    w.setFeature('highContrast', true);
+    expect(cb).toHaveBeenCalledWith('highContrast', true);
+  });
+
+  test('applySettings() applies multiple features at once', () => {
+    var w = AccessibilityWidget.init();
+    w.applySettings({ highContrast: true, darkMode: true, fontSize: 2 });
+    expect(w.getSettings().highContrast).toBe(true);
+    expect(w.getSettings().darkMode).toBe(true);
+    expect(w.getSettings().fontSize).toBe(2);
+    expect(document.body.classList.contains('a11y-high-contrast')).toBe(true);
+    expect(document.body.classList.contains('a11y-dark-mode')).toBe(true);
+    expect(document.body.classList.contains('a11y-font-2')).toBe(true);
+  });
+
+  test('applySettings() ignores unknown keys', () => {
+    var w = AccessibilityWidget.init();
+    expect(() => w.applySettings({ unknownKey: true, highContrast: true })).not.toThrow();
+    expect(w.getSettings().highContrast).toBe(true);
+  });
+});
+
+// ===========================================================================
+// 22. Keyboard Shortcut (Alt+A)
+// ===========================================================================
+
+describe('Keyboard Shortcut', () => {
+  test('Alt+A opens the menu by default', () => {
+    AccessibilityWidget.init();
+    simulateKeydown(document, 'a', { altKey: true });
+    expect(getRoot().classList.contains('a11y-widget--open')).toBe(true);
+  });
+
+  test('Alt+A closes the menu when open', () => {
+    var w = AccessibilityWidget.init();
+    w.openMenu();
+    simulateKeydown(document, 'a', { altKey: true });
+    expect(getRoot().classList.contains('a11y-widget--open')).toBe(false);
+  });
+
+  test('default shortcut is Alt+A', () => {
+    var w = AccessibilityWidget.init();
+    expect(getToggleBtn().getAttribute('aria-keyshortcuts')).toBe('Alt+A');
+  });
+
+  test('custom keyboard shortcut works', () => {
+    AccessibilityWidget.init({ keyboardShortcut: 'ctrl+m' });
+    simulateKeydown(document, 'm', { ctrlKey: true });
+    expect(getRoot().classList.contains('a11y-widget--open')).toBe(true);
+  });
+
+  test('keyboardShortcut: false disables the shortcut', () => {
+    AccessibilityWidget.init({ keyboardShortcut: false });
+    simulateKeydown(document, 'a', { altKey: true });
+    expect(getRoot().classList.contains('a11y-widget--open')).toBe(false);
+  });
+
+  test('keyboardShortcut: false removes aria-keyshortcuts attribute', () => {
+    AccessibilityWidget.init({ keyboardShortcut: false });
+    expect(getToggleBtn().hasAttribute('aria-keyshortcuts')).toBe(false);
+  });
+});
+
+// ===========================================================================
+// 23. Granular Typography Range Controls
+// ===========================================================================
+
+function getRangeBtn(featureId, action) {
+  return document.querySelector(
+    '.a11y-widget__font-btn[data-feature="' + featureId + '"][data-action="' + action + '"]'
+  );
+}
+
+function getRangeValue(featureId) {
+  return document.querySelector(
+    '.a11y-widget__font-value[data-feature="' + featureId + '"]'
+  );
+}
+
+describe('Granular Typography - Line Height', () => {
+  beforeEach(() => { AccessibilityWidget.init(); });
+
+  test('increase button increments lineHeight', () => {
+    simulateClick(getRangeBtn('lineHeight', 'increase'));
+    expect(AccessibilityWidget.getInstance().getSettings().lineHeight).toBe(1);
+  });
+
+  test('decrease button decrements lineHeight', () => {
+    var w = AccessibilityWidget.getInstance();
+    w.setFeature('lineHeight', 3);
+    simulateClick(getRangeBtn('lineHeight', 'decrease'));
+    expect(w.getSettings().lineHeight).toBe(2);
+  });
+
+  test('lineHeight adds correct body class', () => {
+    AccessibilityWidget.getInstance().setFeature('lineHeight', 2);
+    expect(document.body.classList.contains('a11y-line-height-2')).toBe(true);
+  });
+
+  test('lineHeight value display updates', () => {
+    simulateClick(getRangeBtn('lineHeight', 'increase'));
+    expect(getRangeValue('lineHeight').textContent).toBe('1');
+  });
+
+  test('lineHeight persists to localStorage', () => {
+    AccessibilityWidget.getInstance().setFeature('lineHeight', 3);
+    var saved = JSON.parse(localStorage.getItem('a11yWidgetSettings'));
+    expect(saved.lineHeight).toBe(3);
+  });
+});
+
+describe('Granular Typography - Letter Spacing', () => {
+  beforeEach(() => { AccessibilityWidget.init(); });
+
+  test('increase button increments letterSpacing', () => {
+    simulateClick(getRangeBtn('letterSpacing', 'increase'));
+    expect(AccessibilityWidget.getInstance().getSettings().letterSpacing).toBe(1);
+  });
+
+  test('letterSpacing adds correct body class', () => {
+    AccessibilityWidget.getInstance().setFeature('letterSpacing', 2);
+    expect(document.body.classList.contains('a11y-letter-spacing-2')).toBe(true);
+  });
+
+  test('letterSpacing value display updates', () => {
+    simulateClick(getRangeBtn('letterSpacing', 'increase'));
+    expect(getRangeValue('letterSpacing').textContent).toBe('1');
+  });
+});
+
+describe('Granular Typography - Word Spacing', () => {
+  beforeEach(() => { AccessibilityWidget.init(); });
+
+  test('increase button increments wordSpacing', () => {
+    simulateClick(getRangeBtn('wordSpacing', 'increase'));
+    expect(AccessibilityWidget.getInstance().getSettings().wordSpacing).toBe(1);
+  });
+
+  test('wordSpacing adds correct body class', () => {
+    AccessibilityWidget.getInstance().setFeature('wordSpacing', 2);
+    expect(document.body.classList.contains('a11y-word-spacing-2')).toBe(true);
+  });
+
+  test('wordSpacing value display updates', () => {
+    simulateClick(getRangeBtn('wordSpacing', 'increase'));
+    expect(getRangeValue('wordSpacing').textContent).toBe('1');
+  });
+});
+
+// ===========================================================================
+// 24. Section Group Label Translation
+// ===========================================================================
+
+describe('Section Group Labels', () => {
+  test('group sections show translated labels', () => {
+    AccessibilityWidget.init();
+    var groups = document.querySelectorAll('[data-group]');
+    expect(groups.length).toBeGreaterThanOrEqual(3);
+    var names = Array.from(groups).map(function (g) { return g.getAttribute('data-group'); });
+    expect(names).toContain('visual');
+    expect(names).toContain('content');
+    expect(names).toContain('navigation');
+  });
+
+  test('group aria-labels use English by default', () => {
+    AccessibilityWidget.init();
+    var visualGroup = document.querySelector('[data-group="visual"]');
+    expect(visualGroup.getAttribute('aria-label')).toBe('Visual');
+    var navGroup = document.querySelector('[data-group="navigation"]');
+    expect(navGroup.getAttribute('aria-label')).toBe('Navigation');
+  });
+
+  test('group aria-labels update on language change', () => {
+    var w = AccessibilityWidget.init();
+    w.setLanguage('he');
+    var visualGroup = document.querySelector('[data-group="visual"]');
+    expect(visualGroup.getAttribute('aria-label')).not.toBe('Visual');
+    expect(visualGroup.getAttribute('aria-label').length).toBeGreaterThan(0);
+  });
+});
+
+// ===========================================================================
+// 25. Color Blindness Filters
+// ===========================================================================
+
+describe('Color Blindness Filters', () => {
+  test('deuteranopia adds body class and SVG filter is injected', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('deuteranopia', true);
+    expect(document.body.classList.contains('a11y-deuteranopia')).toBe(true);
+    expect(document.getElementById('a11y-color-blind-filters')).not.toBeNull();
+  });
+
+  test('protanopia adds body class', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('protanopia', true);
+    expect(document.body.classList.contains('a11y-protanopia')).toBe(true);
+  });
+
+  test('tritanopia adds body class', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('tritanopia', true);
+    expect(document.body.classList.contains('a11y-tritanopia')).toBe(true);
+  });
+
+  test('enabling deuteranopia disables protanopia and tritanopia', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('protanopia', true);
+    w.setFeature('deuteranopia', true);
+    expect(w.getSettings().protanopia).toBe(false);
+    expect(w.getSettings().tritanopia).toBe(false);
+    expect(w.getSettings().deuteranopia).toBe(true);
+  });
+
+  test('enabling protanopia disables deuteranopia and tritanopia', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('deuteranopia', true);
+    w.setFeature('protanopia', true);
+    expect(w.getSettings().deuteranopia).toBe(false);
+    expect(w.getSettings().tritanopia).toBe(false);
+    expect(w.getSettings().protanopia).toBe(true);
+  });
+
+  test('enabling tritanopia disables deuteranopia and protanopia', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('deuteranopia', true);
+    w.setFeature('tritanopia', true);
+    expect(w.getSettings().deuteranopia).toBe(false);
+    expect(w.getSettings().protanopia).toBe(false);
+    expect(w.getSettings().tritanopia).toBe(true);
+  });
+
+  test('only one color blind mode body class at a time', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('deuteranopia', true);
+    w.setFeature('protanopia', true);
+    expect(document.body.classList.contains('a11y-deuteranopia')).toBe(false);
+    expect(document.body.classList.contains('a11y-protanopia')).toBe(true);
+  });
+
+  test('SVG filter is removed from DOM on destroy', () => {
+    AccessibilityWidget.init();
+    expect(document.getElementById('a11y-color-blind-filters')).not.toBeNull();
+    AccessibilityWidget.destroy();
+    expect(document.getElementById('a11y-color-blind-filters')).toBeNull();
+  });
+});
+
+// ===========================================================================
+// 26. Zoom Lock Warning
+// ===========================================================================
+
+describe('Zoom Lock Warning', () => {
+  afterEach(() => {
+    // Remove any viewport meta tags added by tests
+    var metas = document.querySelectorAll('meta[name="viewport"]');
+    metas.forEach(function (m) { m.parentNode.removeChild(m); });
+  });
+
+  test('no warning shown when no viewport meta exists', () => {
+    AccessibilityWidget.init();
+    expect(document.querySelector('.a11y-widget__zoom-warn')).toBeNull();
+  });
+
+  test('no warning shown for a normal viewport meta', () => {
+    var meta = document.createElement('meta');
+    meta.name = 'viewport';
+    meta.content = 'width=device-width, initial-scale=1';
+    document.head.appendChild(meta);
+    AccessibilityWidget.init();
+    expect(document.querySelector('.a11y-widget__zoom-warn')).toBeNull();
+  });
+
+  test('warning shown when user-scalable=no', () => {
+    var meta = document.createElement('meta');
+    meta.name = 'viewport';
+    meta.content = 'width=device-width, initial-scale=1, user-scalable=no';
+    document.head.appendChild(meta);
+    AccessibilityWidget.init();
+    expect(document.querySelector('.a11y-widget__zoom-warn')).not.toBeNull();
+  });
+
+  test('warning shown when user-scalable=0', () => {
+    var meta = document.createElement('meta');
+    meta.name = 'viewport';
+    meta.content = 'width=device-width, user-scalable=0';
+    document.head.appendChild(meta);
+    AccessibilityWidget.init();
+    expect(document.querySelector('.a11y-widget__zoom-warn')).not.toBeNull();
+  });
+
+  test('warning shown when maximum-scale=1', () => {
+    var meta = document.createElement('meta');
+    meta.name = 'viewport';
+    meta.content = 'width=device-width, initial-scale=1, maximum-scale=1';
+    document.head.appendChild(meta);
+    AccessibilityWidget.init();
+    expect(document.querySelector('.a11y-widget__zoom-warn')).not.toBeNull();
+  });
+
+  test('warning shown when maximum-scale=2 (less than 5)', () => {
+    var meta = document.createElement('meta');
+    meta.name = 'viewport';
+    meta.content = 'width=device-width, maximum-scale=2';
+    document.head.appendChild(meta);
+    AccessibilityWidget.init();
+    expect(document.querySelector('.a11y-widget__zoom-warn')).not.toBeNull();
+  });
+
+  test('no warning when maximum-scale=5', () => {
+    var meta = document.createElement('meta');
+    meta.name = 'viewport';
+    meta.content = 'width=device-width, maximum-scale=5';
+    document.head.appendChild(meta);
+    AccessibilityWidget.init();
+    expect(document.querySelector('.a11y-widget__zoom-warn')).toBeNull();
+  });
+
+  test('warning text updates on language change', () => {
+    var meta = document.createElement('meta');
+    meta.name = 'viewport';
+    meta.content = 'width=device-width, user-scalable=no';
+    document.head.appendChild(meta);
+    var w = AccessibilityWidget.init();
+    var warnEl = document.querySelector('.a11y-widget__zoom-warn');
+    var enText = warnEl.textContent;
+    w.setLanguage('he');
+    expect(warnEl.textContent).not.toBe(enText);
+    expect(warnEl.textContent.length).toBeGreaterThan(0);
+  });
+
+  test('console.warn is called when zoom lock detected', () => {
+    var spy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    var meta = document.createElement('meta');
+    meta.name = 'viewport';
+    meta.content = 'width=device-width, user-scalable=no';
+    document.head.appendChild(meta);
+    AccessibilityWidget.init();
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('[AccessibilityWidget]'));
+    spy.mockRestore();
   });
 });

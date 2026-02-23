@@ -54,6 +54,27 @@ const ICONS = {
 
   textToSpeech:
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>',
+
+  focusMode:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M3 12h2M19 12h2M12 3v2M12 19v2"/><path d="M5.64 5.64l1.42 1.42M16.95 16.95l1.41 1.41M5.64 18.36l1.42-1.42M16.95 7.05l1.41-1.41"/></svg>',
+
+  lineHeight:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/><polyline points="7 3 4 6 7 9"/><polyline points="7 15 4 18 7 21"/></svg>',
+
+  letterSpacing:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="8" x2="21" y2="8"/><line x1="3" y1="16" x2="21" y2="16"/><polyline points="9 5 12 2 15 5"/><polyline points="9 19 12 22 15 19"/><line x1="12" y1="2" x2="12" y2="22"/></svg>',
+
+  wordSpacing:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h6M14 6h6"/><path d="M4 12h6M14 12h6"/><line x1="11" y1="4" x2="11" y2="8"/><line x1="13" y1="4" x2="13" y2="8"/></svg>',
+
+  deuteranopia:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2v20"/><circle cx="8" cy="10" r="2" fill="currentColor"/><circle cx="16" cy="14" r="2" fill="currentColor"/></svg>',
+
+  protanopia:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2v20"/><circle cx="9" cy="12" r="2" fill="currentColor"/><circle cx="15" cy="12" r="2" fill="currentColor"/></svg>',
+
+  tritanopia:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2v20"/><circle cx="8" cy="14" r="2" fill="currentColor"/><circle cx="16" cy="10" r="2" fill="currentColor"/></svg>',
 };
 
 // ---------------------------------------------------------------------------
@@ -71,6 +92,7 @@ const ICONS = {
  * @property {number}  [min]    - Minimum value (range features only).
  * @property {number}  [max]    - Maximum value (range features only).
  * @property {number}  [step]   - Step increment (range features only).
+ * @property {string[]} [conflictsWith] - IDs of mutually-exclusive features.
  */
 
 /** @type {FeatureDefinition[]} */
@@ -190,6 +212,74 @@ const FEATURES = [
     icon: ICONS.textToSpeech,
     group: 'navigation',
   },
+  {
+    id: 'focusMode',
+    type: 'toggle',
+    cssClass: 'a11y-focus-mode',
+    default: false,
+    icon: ICONS.focusMode,
+    group: 'content',
+  },
+  {
+    id: 'lineHeight',
+    type: 'range',
+    cssClass: 'a11y-line-height',
+    default: 0,
+    icon: ICONS.lineHeight,
+    group: 'content',
+    min: 0,
+    max: 5,
+    step: 1,
+  },
+  {
+    id: 'letterSpacing',
+    type: 'range',
+    cssClass: 'a11y-letter-spacing',
+    default: 0,
+    icon: ICONS.letterSpacing,
+    group: 'content',
+    min: 0,
+    max: 5,
+    step: 1,
+  },
+  {
+    id: 'wordSpacing',
+    type: 'range',
+    cssClass: 'a11y-word-spacing',
+    default: 0,
+    icon: ICONS.wordSpacing,
+    group: 'content',
+    min: 0,
+    max: 5,
+    step: 1,
+  },
+  {
+    id: 'deuteranopia',
+    type: 'toggle',
+    cssClass: 'a11y-deuteranopia',
+    default: false,
+    icon: ICONS.deuteranopia,
+    group: 'visual',
+    conflictsWith: ['protanopia', 'tritanopia'],
+  },
+  {
+    id: 'protanopia',
+    type: 'toggle',
+    cssClass: 'a11y-protanopia',
+    default: false,
+    icon: ICONS.protanopia,
+    group: 'visual',
+    conflictsWith: ['deuteranopia', 'tritanopia'],
+  },
+  {
+    id: 'tritanopia',
+    type: 'toggle',
+    cssClass: 'a11y-tritanopia',
+    default: false,
+    icon: ICONS.tritanopia,
+    group: 'visual',
+    conflictsWith: ['deuteranopia', 'protanopia'],
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -226,11 +316,15 @@ function getFeature(featureId) {
 }
 
 /**
- * Remove all font-size-level classes from `document.body`.
- * Font-size classes follow the pattern `a11y-font-{0..N}`.
+ * Remove all level classes for a range feature from `document.body`
+ * and `document.documentElement`.
+ *
+ * Level classes follow the pattern `{feature.cssClass}-{n}` where n
+ * iterates from `feature.min` to `feature.max`.
+ *
+ * @param {FeatureDefinition} feature
  */
-function removeFontSizeClasses() {
-  const feature = featureMap.get('fontSize');
+function removeRangeClasses(feature) {
   if (!feature) {
     return;
   }
@@ -284,7 +378,7 @@ export function applyFeature(featureId, value) {
 
   if (feature.type === 'range') {
     // Remove all existing range-level classes for this feature
-    removeFontSizeClasses();
+    removeRangeClasses(feature);
 
     // Apply the new level class only when value is greater than the minimum
     const numericValue = Number(value);
@@ -317,7 +411,7 @@ export function removeFeature(featureId) {
   }
 
   if (feature.type === 'range') {
-    removeFontSizeClasses();
+    removeRangeClasses(feature);
     return;
   }
 }

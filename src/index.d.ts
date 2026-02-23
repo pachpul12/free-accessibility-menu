@@ -122,6 +122,15 @@ export interface WidgetOptions {
    * When omitted, no link is rendered.
    */
   accessibilityStatementUrl?: string;
+
+  /**
+   * Keyboard shortcut string that opens/closes the widget menu.
+   * Use `+` as separator (e.g. `"alt+a"`, `"ctrl+shift+a"`).
+   * The shortcut is matched case-insensitively.
+   * Set to `false` or an empty string to disable.
+   * @default 'alt+a'
+   */
+  keyboardShortcut?: string | false;
 }
 
 // ---------------------------------------------------------------------------
@@ -204,6 +213,38 @@ export interface WidgetInstance {
    * if (settings.highContrast) { ... }
    */
   getSettings(): Record<string, boolean | number>;
+
+  /**
+   * Programmatically set a single feature to an explicit value.
+   *
+   * For **toggle** features `value` is coerced to boolean; for **range**
+   * features it is coerced to a number and clamped to the feature's
+   * `[min, max]` range. No-op when the value is already at the target.
+   *
+   * Fires `onToggle` callback and the `a11y:toggle` CustomEvent — the same
+   * side-effects as a user interaction.
+   *
+   * @param featureId One of the 14 built-in feature IDs.
+   * @param value Desired value.
+   *
+   * @example
+   * widget.setFeature('darkMode', true);
+   * widget.setFeature('fontSize', 3);
+   */
+  setFeature(featureId: string, value: boolean | number): void;
+
+  /**
+   * Apply multiple feature values in one call.
+   *
+   * Iterates the supplied `settings` map and calls `setFeature` for each
+   * entry.  Unknown feature IDs and invalid values are silently skipped.
+   *
+   * @param settings Map of feature ID → value.
+   *
+   * @example
+   * widget.applySettings({ darkMode: true, fontSize: 2, highContrast: false });
+   */
+  applySettings(settings: Record<string, boolean | number>): void;
 
   /**
    * Reset all features to their defaults, clear persisted settings, and

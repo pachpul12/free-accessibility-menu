@@ -215,7 +215,7 @@ const AccessibilityWidget = {
    * Semantic version of the library.
    * @type {string}
    */
-  version: '1.0.0',
+  version: '2.0.0',
 
   /**
    * Mount the accessibility widget and append it to `document.body`.

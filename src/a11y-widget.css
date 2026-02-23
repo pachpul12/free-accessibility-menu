@@ -475,7 +475,22 @@
 }
 
 /* --------------------------------------------------------------------------
-   20. Reset Button (.a11y-widget__reset)
+   20. Zoom Lock Warning (.a11y-widget__zoom-warn)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__zoom-warn {
+  margin: 0 0 8px 0;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #7a5200;
+  background-color: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 4px;
+}
+
+/* --------------------------------------------------------------------------
+   21. Reset Button (.a11y-widget__reset)
    -------------------------------------------------------------------------- */
 
 .a11y-widget__reset {
@@ -925,6 +940,33 @@ html.a11y-font-5 body {
 }
 
 /* ==========================================================================
+   GRANULAR TYPOGRAPHY CONTROLS
+   Line Height, Letter Spacing, Word Spacing (levels 1–5)
+   Applied to <body> and scoped away from the widget itself.
+   ========================================================================== */
+
+/* Line Height */
+body.a11y-line-height-1 *:not(.a11y-widget):not(.a11y-widget *) { line-height: 1.4 !important; }
+body.a11y-line-height-2 *:not(.a11y-widget):not(.a11y-widget *) { line-height: 1.6 !important; }
+body.a11y-line-height-3 *:not(.a11y-widget):not(.a11y-widget *) { line-height: 1.8 !important; }
+body.a11y-line-height-4 *:not(.a11y-widget):not(.a11y-widget *) { line-height: 2.0 !important; }
+body.a11y-line-height-5 *:not(.a11y-widget):not(.a11y-widget *) { line-height: 2.4 !important; }
+
+/* Letter Spacing */
+body.a11y-letter-spacing-1 *:not(.a11y-widget):not(.a11y-widget *) { letter-spacing: 0.05em !important; }
+body.a11y-letter-spacing-2 *:not(.a11y-widget):not(.a11y-widget *) { letter-spacing: 0.10em !important; }
+body.a11y-letter-spacing-3 *:not(.a11y-widget):not(.a11y-widget *) { letter-spacing: 0.15em !important; }
+body.a11y-letter-spacing-4 *:not(.a11y-widget):not(.a11y-widget *) { letter-spacing: 0.20em !important; }
+body.a11y-letter-spacing-5 *:not(.a11y-widget):not(.a11y-widget *) { letter-spacing: 0.25em !important; }
+
+/* Word Spacing */
+body.a11y-word-spacing-1 *:not(.a11y-widget):not(.a11y-widget *) { word-spacing: 0.10em !important; }
+body.a11y-word-spacing-2 *:not(.a11y-widget):not(.a11y-widget *) { word-spacing: 0.20em !important; }
+body.a11y-word-spacing-3 *:not(.a11y-widget):not(.a11y-widget *) { word-spacing: 0.30em !important; }
+body.a11y-word-spacing-4 *:not(.a11y-widget):not(.a11y-widget *) { word-spacing: 0.40em !important; }
+body.a11y-word-spacing-5 *:not(.a11y-widget):not(.a11y-widget *) { word-spacing: 0.50em !important; }
+
+/* ==========================================================================
    RESPONSIVE DESIGN
    ========================================================================== */
 
@@ -1016,4 +1058,51 @@ body.a11y-high-contrast .a11y-widget__item--active {
   .a11y-widget {
     display: none !important;
   }
+}
+
+/* ==========================================================================
+   COLOR BLINDNESS SIMULATION FILTERS
+   Each class applies the matching SVG feColorMatrix filter to the host
+   page content, excluding the widget itself.
+   ========================================================================== */
+
+body.a11y-deuteranopia > *:not(.a11y-widget):not(.a11y-reading-guide-bar) {
+  filter: url(#a11y-filter-deuteranopia) !important;
+}
+
+body.a11y-protanopia > *:not(.a11y-widget):not(.a11y-reading-guide-bar) {
+  filter: url(#a11y-filter-protanopia) !important;
+}
+
+body.a11y-tritanopia > *:not(.a11y-widget):not(.a11y-reading-guide-bar) {
+  filter: url(#a11y-filter-tritanopia) !important;
+}
+
+/* ==========================================================================
+   FOCUS MODE
+   Dims sidebar / auxiliary content so the main text area stands out.
+   Targets common landmark and layout elements outside the widget itself.
+   ========================================================================== */
+
+body.a11y-focus-mode aside:not(.a11y-widget):not(.a11y-widget *),
+body.a11y-focus-mode header:not(.a11y-widget):not(.a11y-widget *),
+body.a11y-focus-mode footer:not(.a11y-widget):not(.a11y-widget *),
+body.a11y-focus-mode nav:not(.a11y-widget):not(.a11y-widget *),
+body.a11y-focus-mode [role="complementary"]:not(.a11y-widget):not(.a11y-widget *),
+body.a11y-focus-mode [role="banner"]:not(.a11y-widget):not(.a11y-widget *),
+body.a11y-focus-mode [role="contentinfo"]:not(.a11y-widget):not(.a11y-widget *),
+body.a11y-focus-mode [role="navigation"]:not(.a11y-widget):not(.a11y-widget *) {
+  opacity: 0.08;
+  transition: opacity 0.2s ease;
+}
+
+body.a11y-focus-mode aside:not(.a11y-widget):not(.a11y-widget *):hover,
+body.a11y-focus-mode header:not(.a11y-widget):not(.a11y-widget *):hover,
+body.a11y-focus-mode footer:not(.a11y-widget):not(.a11y-widget *):hover,
+body.a11y-focus-mode nav:not(.a11y-widget):not(.a11y-widget *):hover,
+body.a11y-focus-mode [role="complementary"]:not(.a11y-widget):not(.a11y-widget *):hover,
+body.a11y-focus-mode [role="banner"]:not(.a11y-widget):not(.a11y-widget *):hover,
+body.a11y-focus-mode [role="contentinfo"]:not(.a11y-widget):not(.a11y-widget *):hover,
+body.a11y-focus-mode [role="navigation"]:not(.a11y-widget):not(.a11y-widget *):hover {
+  opacity: 1;
 }
