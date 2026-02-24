@@ -252,6 +252,42 @@ export interface WidgetOptions {
    * devMode: true
    */
   devMode?: boolean;
+
+  /**
+   * Render a small attribution link at the very bottom of the widget footer.
+   *
+   * When `true`, a subtle one-line link is appended below the disclaimer and
+   * reset button. The link opens in a new tab with
+   * `rel="nofollow noopener noreferrer"`.
+   *
+   * Off by default — enabling it is entirely optional and helps support the
+   * open-source project.
+   *
+   * @default false
+   * @example
+   * AccessibilityWidget.init({
+   *   showAttribution: true,
+   *   attributionUrl:  'https://www.advertease-tech.com/',
+   *   attributionText: 'Built with Free Accessibility Menu™',
+   * });
+   */
+  showAttribution?: boolean;
+
+  /**
+   * URL opened when the attribution link is clicked.
+   * Ignored when `showAttribution` is `false`.
+   *
+   * @default 'https://github.com/pachpul12/free-accessibility-menu'
+   */
+  attributionUrl?: string;
+
+  /**
+   * Visible text for the attribution link.
+   * Ignored when `showAttribution` is `false`.
+   *
+   * @default 'Free Accessibility Menu™'
+   */
+  attributionText?: string;
 }
 
 // ---------------------------------------------------------------------------

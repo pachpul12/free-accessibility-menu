@@ -164,6 +164,24 @@
     "onCloseMenu": {
       "description": "Callback invoked when the menu panel closes. Prefer the a11y:close CustomEvent for decoupled integrations.",
       "type": "string"
+    },
+    "showAttribution": {
+      "type": "boolean",
+      "description": "When true, renders a subtle attribution link at the very bottom of the widget footer. Off by default — opt-in only. Enabling it helps support the open-source project.",
+      "default": false
+    },
+    "attributionUrl": {
+      "type": "string",
+      "description": "URL opened by the attribution link. Ignored when showAttribution is false.",
+      "format": "uri-reference",
+      "default": "https://github.com/pachpul12/free-accessibility-menu",
+      "examples": ["https://github.com/pachpul12/free-accessibility-menu", "https://www.advertease-tech.com/"]
+    },
+    "attributionText": {
+      "type": "string",
+      "description": "Visible text for the attribution link. Ignored when showAttribution is false.",
+      "default": "Free Accessibility Menu™",
+      "examples": ["Free Accessibility Menu™", "Built with Free Accessibility Menu™"]
     }
   },
   "examples": [

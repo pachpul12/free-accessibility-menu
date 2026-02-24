@@ -277,6 +277,10 @@ function Widget(options) {
   this._disclaimerText = (options.disclaimerText !== undefined) ? options.disclaimerText : undefined;
   this._showPresets = options.showPresets !== false;
   this._showTooltip = options.showTooltip !== false;
+  // Attribution footer row (opt-in, default off)
+  this._showAttribution = options.showAttribution === true;
+  this._attributionUrl = options.attributionUrl || 'https://github.com/pachpul12/free-accessibility-menu';
+  this._attributionText = options.attributionText || 'Free Accessibility Menu\u2122';
 
   // Determine which features are enabled (built-in + registered plugins)
   this._enabledFeatures = this._resolveEnabledFeatures(options.features);
@@ -343,6 +347,7 @@ function Widget(options) {
   this._rangeValueEls = {};   // featureId -> value display element
   this._langSelect = null;    // <select> element for language switcher
   this._statementLinkEl = null; // <a> for accessibility statement (optional)
+  this._attributionEl = null;   // <a> for optional attribution footer row
 
   // -- Color blindness SVG filter element ------------------------------------
   this._colorBlindSvgEl = null;
@@ -809,6 +814,16 @@ Widget.prototype._buildDOM = function () {
     });
     this._statementLinkEl.textContent = this._t('accessibilityStatementLink');
     footer.appendChild(this._statementLinkEl);
+  }
+
+  if (this._showAttribution) {
+    this._attributionEl = createElement('a', 'a11y-widget__attribution', {
+      'href': this._attributionUrl,
+      'target': '_blank',
+      'rel': 'nofollow noopener noreferrer',
+    });
+    this._attributionEl.textContent = this._attributionText;
+    footer.appendChild(this._attributionEl);
   }
 
   this._panel.appendChild(footer);
@@ -3186,6 +3201,7 @@ Widget.prototype.destroy = function () {
   this._rangeValueEls = {};
   this._langSelect = null;
   this._statementLinkEl = null;
+  this._attributionEl = null;
   this._colorBlindSvgEl = null;
   this._zoomWarnEl = null;
   this._announceEl = null;

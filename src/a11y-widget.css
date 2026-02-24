@@ -553,6 +553,44 @@ body.a11y-dark-mode .a11y-widget__statement-link {
 }
 
 /* --------------------------------------------------------------------------
+   21b. Attribution Link (.a11y-widget__attribution)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__attribution {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #aaaaaa;
+  text-decoration: none;
+  text-align: center;
+  transition: color 0.15s ease;
+}
+
+.a11y-widget__attribution:hover {
+  color: #777777;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.a11y-widget__attribution:focus-visible {
+  outline: 2px solid var(--a11y-primary);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+body.a11y-dark-mode .a11y-widget__attribution {
+  color: #666666;
+}
+
+body.a11y-dark-mode .a11y-widget__attribution:hover {
+  color: #999999;
+}
+
+body.a11y-high-contrast .a11y-widget__attribution {
+  color: #000000;
+}
+
+/* --------------------------------------------------------------------------
    22. Quick Start Presets (.a11y-widget__quick-start)
    -------------------------------------------------------------------------- */
 

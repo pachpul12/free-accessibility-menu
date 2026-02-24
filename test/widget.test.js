@@ -3311,6 +3311,86 @@ describe('Branding Options', () => {
 });
 
 // ===========================================================================
+// Attribution Footer Row
+// ===========================================================================
+
+describe('Attribution footer row', () => {
+  afterEach(() => { AccessibilityWidget.destroy(); });
+
+  test('attribution link is not rendered by default', () => {
+    AccessibilityWidget.init();
+    expect(document.querySelector('.a11y-widget__attribution')).toBeNull();
+  });
+
+  test('attribution link not rendered when showAttribution: false', () => {
+    AccessibilityWidget.init({ showAttribution: false });
+    expect(document.querySelector('.a11y-widget__attribution')).toBeNull();
+  });
+
+  test('attribution link rendered when showAttribution: true', () => {
+    AccessibilityWidget.init({ showAttribution: true });
+    var el = document.querySelector('.a11y-widget__attribution');
+    expect(el).not.toBeNull();
+    expect(el.tagName).toBe('A');
+  });
+
+  test('default attribution text is "Free Accessibility Menu™"', () => {
+    AccessibilityWidget.init({ showAttribution: true });
+    var el = document.querySelector('.a11y-widget__attribution');
+    expect(el.textContent).toBe('Free Accessibility Menu\u2122');
+  });
+
+  test('default attribution URL points to GitHub repo', () => {
+    AccessibilityWidget.init({ showAttribution: true });
+    var el = document.querySelector('.a11y-widget__attribution');
+    expect(el.getAttribute('href')).toBe('https://github.com/pachpul12/free-accessibility-menu');
+  });
+
+  test('custom attributionUrl is used', () => {
+    AccessibilityWidget.init({ showAttribution: true, attributionUrl: 'https://www.advertease-tech.com/' });
+    var el = document.querySelector('.a11y-widget__attribution');
+    expect(el.getAttribute('href')).toBe('https://www.advertease-tech.com/');
+  });
+
+  test('custom attributionText is used', () => {
+    AccessibilityWidget.init({ showAttribution: true, attributionText: 'Built with Free Accessibility Menu\u2122' });
+    var el = document.querySelector('.a11y-widget__attribution');
+    expect(el.textContent).toBe('Built with Free Accessibility Menu\u2122');
+  });
+
+  test('attribution link opens in a new tab', () => {
+    AccessibilityWidget.init({ showAttribution: true });
+    var el = document.querySelector('.a11y-widget__attribution');
+    expect(el.getAttribute('target')).toBe('_blank');
+  });
+
+  test('attribution link has nofollow noopener noreferrer rel', () => {
+    AccessibilityWidget.init({ showAttribution: true });
+    var el = document.querySelector('.a11y-widget__attribution');
+    var rel = el.getAttribute('rel');
+    expect(rel).toContain('nofollow');
+    expect(rel).toContain('noopener');
+    expect(rel).toContain('noreferrer');
+  });
+
+  test('attribution link is placed inside the footer', () => {
+    AccessibilityWidget.init({ showAttribution: true });
+    var el = document.querySelector('.a11y-widget__attribution');
+    expect(el.closest('.a11y-widget__footer')).not.toBeNull();
+  });
+
+  test('attribution link appears after statement link when both present', () => {
+    AccessibilityWidget.init({ showAttribution: true, accessibilityStatementUrl: '/a11y' });
+    var footer = document.querySelector('.a11y-widget__footer');
+    var children = Array.from(footer.children);
+    var stmtIdx = children.findIndex(function (c) { return c.classList.contains('a11y-widget__statement-link'); });
+    var attrIdx = children.findIndex(function (c) { return c.classList.contains('a11y-widget__attribution'); });
+    expect(stmtIdx).toBeGreaterThanOrEqual(0);
+    expect(attrIdx).toBeGreaterThan(stmtIdx);
+  });
+});
+
+// ===========================================================================
 // 35. Development Mode Validation
 // ===========================================================================
 

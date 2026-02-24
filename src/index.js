@@ -84,6 +84,18 @@ let _instance = null;
  *   URL of the site's accessibility statement page.  When provided, a labelled
  *   link is rendered in the widget footer that opens the page in a new tab.
  *   When omitted, no link is rendered.
+ *
+ * @property {boolean} [showAttribution=false]
+ *   When `true`, renders a small attribution link at the very bottom of the
+ *   widget footer (below the disclaimer and reset button).  Off by default —
+ *   opt-in only.  Enabling it helps support the open-source project.
+ *
+ * @property {string} [attributionUrl='https://github.com/pachpul12/free-accessibility-menu']
+ *   URL for the attribution link.  Ignored when `showAttribution` is falsy.
+ *
+ * @property {string} [attributionText='Free Accessibility Menu™']
+ *   Visible link text for the attribution row.  Ignored when `showAttribution`
+ *   is falsy.
  */
 
 // ---------------------------------------------------------------------------

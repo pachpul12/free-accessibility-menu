@@ -603,6 +603,30 @@ dist/
 
 Tested on modern versions of Chrome, Firefox, Edge, and Safari. The widget uses standard DOM APIs and should work in any browser that supports ES5, `classList`, `localStorage`, and `DOMParser`.
 
+## Branding / Attribution
+
+The widget includes an **opt-in attribution link** that you can enable to show a small, unobtrusive footer row crediting the project. It is **off by default** and has no effect unless explicitly enabled.
+
+```js
+AccessibilityWidget.init({
+  showAttribution: true,                            // required to enable
+  attributionUrl:  'https://www.advertease-tech.com/', // optional, defaults to GitHub
+  attributionText: 'Built with Free Accessibility Menu™', // optional
+});
+```
+
+When enabled, a subtle one-line link is rendered at the very bottom of the widget footer — small text, muted colour, keyboard-focusable, and opening in a new tab with `rel="nofollow noopener noreferrer"`.
+
+Enabling it is entirely your choice. It helps support continued development of the project.
+
+**Option reference**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `showAttribution` | `boolean` | `false` | Must be `true` to render the attribution row |
+| `attributionUrl` | `string` | GitHub repo URL | Link destination |
+| `attributionText` | `string` | `'Free Accessibility Menu™'` | Visible link text |
+
 ## Disclaimer
 
 > **This widget does not guarantee full accessibility compliance.** It is provided "AS IS" without warranty of any kind. The widget helps implement various accessibility features but does NOT ensure compliance with ADA, WCAG, Section 508, or any other accessibility standard. It is the responsibility of site owners to test and ensure accessibility. No support or guarantee is provided; using this tool is at the user's own risk.
