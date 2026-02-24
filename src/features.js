@@ -81,6 +81,18 @@ const ICONS = {
 
   sensoryFriendly:
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>',
+
+  readableFont:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><line x1="12" y1="4" x2="12" y2="20"/></svg>',
+
+  saturation:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/><path d="M12 2.69v13.62" stroke-dasharray="3 2"/></svg>',
+
+  brightness:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>',
+
+  suppressNotifications:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.73 21a2 2 0 0 1-3.46 0"/><path d="M18.63 13A17.89 17.89 0 0 1 18 8"/><path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.33-5"/><line x1="1" y1="1" x2="23" y2="23"/></svg>',
 };
 
 // ---------------------------------------------------------------------------
@@ -300,6 +312,44 @@ const FEATURES = [
     cssClass: 'a11y-sensory-friendly',
     default: false,
     icon: ICONS.sensoryFriendly,
+    group: 'content',
+  },
+  {
+    id: 'readableFont',
+    type: 'toggle',
+    cssClass: 'a11y-readable-font',
+    default: false,
+    icon: ICONS.readableFont,
+    group: 'content',
+  },
+  {
+    id: 'saturation',
+    type: 'range',
+    cssClass: 'a11y-saturation',
+    default: 0,
+    icon: ICONS.saturation,
+    group: 'visual',
+    min: 0,
+    max: 5,
+    step: 1,
+  },
+  {
+    id: 'brightness',
+    type: 'range',
+    cssClass: 'a11y-brightness',
+    default: 0,
+    icon: ICONS.brightness,
+    group: 'visual',
+    min: 0,
+    max: 5,
+    step: 1,
+  },
+  {
+    id: 'suppressNotifications',
+    type: 'toggle',
+    cssClass: 'a11y-suppress-notifications',
+    default: false,
+    icon: ICONS.suppressNotifications,
     group: 'content',
   },
 ];

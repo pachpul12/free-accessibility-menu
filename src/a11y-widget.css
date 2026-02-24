@@ -903,6 +903,64 @@ body.a11y-reduced-transparency *:not(.a11y-widget):not(.a11y-widget *) {
 }
 
 /* --------------------------------------------------------------------------
+   Readable Font Mode
+   Replaces brand/decorative fonts with a clean, generic sans-serif for
+   improved legibility for users with cognitive or reading differences.
+   Widget is excluded.
+   -------------------------------------------------------------------------- */
+
+body.a11y-readable-font *:not(.a11y-widget):not(.a11y-widget *) {
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+
+/* --------------------------------------------------------------------------
+   Saturation Control
+   Reduces colour saturation level by level; level 5 = full greyscale.
+   Applied to direct children of body, excluding the widget.
+   -------------------------------------------------------------------------- */
+
+body.a11y-saturation-1 > *:not(.a11y-widget) { filter: saturate(80%) !important; }
+body.a11y-saturation-2 > *:not(.a11y-widget) { filter: saturate(60%) !important; }
+body.a11y-saturation-3 > *:not(.a11y-widget) { filter: saturate(40%) !important; }
+body.a11y-saturation-4 > *:not(.a11y-widget) { filter: saturate(20%) !important; }
+body.a11y-saturation-5 > *:not(.a11y-widget) { filter: saturate(0%) !important; }
+
+/* --------------------------------------------------------------------------
+   Brightness Control
+   Reduces screen brightness level by level; helps with light sensitivity.
+   Applied to direct children of body, excluding the widget.
+   -------------------------------------------------------------------------- */
+
+body.a11y-brightness-1 > *:not(.a11y-widget) { filter: brightness(90%) !important; }
+body.a11y-brightness-2 > *:not(.a11y-widget) { filter: brightness(80%) !important; }
+body.a11y-brightness-3 > *:not(.a11y-widget) { filter: brightness(70%) !important; }
+body.a11y-brightness-4 > *:not(.a11y-widget) { filter: brightness(60%) !important; }
+body.a11y-brightness-5 > *:not(.a11y-widget) { filter: brightness(50%) !important; }
+
+/* --------------------------------------------------------------------------
+   Suppress Notifications
+   Hides common chat widgets, cookie banners, and toast notifications via
+   CSS only — no DOM mutation, fully reversible on feature deactivation.
+   -------------------------------------------------------------------------- */
+
+body.a11y-suppress-notifications [id*="intercom"],
+body.a11y-suppress-notifications [id*="drift"],
+body.a11y-suppress-notifications [id*="crisp"],
+body.a11y-suppress-notifications [id*="hubspot"],
+body.a11y-suppress-notifications [id*="freshchat"],
+body.a11y-suppress-notifications [id*="zendesk"],
+body.a11y-suppress-notifications [class*="chat-widget"],
+body.a11y-suppress-notifications [class*="chat-launcher"],
+body.a11y-suppress-notifications [class*="cookie-banner"],
+body.a11y-suppress-notifications [class*="cookie-notice"],
+body.a11y-suppress-notifications [class*="cookie-consent"],
+body.a11y-suppress-notifications [class*="toast-container"],
+body.a11y-suppress-notifications [class*="notification-banner"],
+body.a11y-suppress-notifications [class*="popup-banner"] {
+  display: none !important;
+}
+
+/* --------------------------------------------------------------------------
    High Contrast Mode
    -------------------------------------------------------------------------- */
 

@@ -85,8 +85,10 @@ var TOGGLE_FEATURE_IDS = [
   'tritanopia',
   'reducedTransparency',
   'sensoryFriendly',
+  'readableFont',
+  'suppressNotifications',
 ];
-var ALL_FEATURE_IDS = TOGGLE_FEATURE_IDS.concat(['fontSize', 'lineHeight', 'letterSpacing', 'wordSpacing']);
+var ALL_FEATURE_IDS = TOGGLE_FEATURE_IDS.concat(['fontSize', 'lineHeight', 'letterSpacing', 'wordSpacing', 'saturation', 'brightness']);
 var FEATURE_CSS = {
   highContrast: 'a11y-high-contrast',
   darkMode: 'a11y-dark-mode',
@@ -107,6 +109,8 @@ var FEATURE_CSS = {
   tritanopia: 'a11y-tritanopia',
   reducedTransparency: 'a11y-reduced-transparency',
   sensoryFriendly: 'a11y-sensory-friendly',
+  readableFont: 'a11y-readable-font',
+  suppressNotifications: 'a11y-suppress-notifications',
 };
 
 // ---------------------------------------------------------------------------
@@ -126,8 +130,8 @@ afterEach(() => {
 // ===========================================================================
 
 describe('Initialization & API', () => {
-  test('AccessibilityWidget.version is "2.3.0"', () => {
-    expect(AccessibilityWidget.version).toBe('2.3.0');
+  test('AccessibilityWidget.version is "2.4.0"', () => {
+    expect(AccessibilityWidget.version).toBe('2.4.0');
   });
 
   test('init() returns a widget instance', () => {
@@ -221,7 +225,7 @@ describe('DOM Structure', () => {
     expect(getTitle().textContent).toBe('Accessibility Menu');
   });
 
-  test('all 23 features rendered as menu items', () => {
+  test('all 27 features rendered as menu items', () => {
     ALL_FEATURE_IDS.forEach((id) => {
       expect(getFeatureItem(id)).not.toBeNull();
     });
@@ -1348,6 +1352,10 @@ describe('All features disabled edge case', () => {
         tritanopia: false,
         reducedTransparency: false,
         sensoryFriendly: false,
+        readableFont: false,
+        saturation: false,
+        brightness: false,
+        suppressNotifications: false,
       },
     });
     expect(getRoot()).not.toBeNull();
@@ -1862,6 +1870,10 @@ describe('Coverage - Edge Cases', () => {
         tritanopia: false,
         reducedTransparency: false,
         sensoryFriendly: false,
+        readableFont: false,
+        saturation: false,
+        brightness: false,
+        suppressNotifications: false,
       },
     });
     w.openMenu();
@@ -2814,5 +2826,168 @@ describe('showLanguageSwitcher option', () => {
     expect(document.querySelector('.a11y-widget').classList.contains('a11y-widget--open')).toBe(true);
     w.closeMenu();
     expect(document.querySelector('.a11y-widget').classList.contains('a11y-widget--open')).toBe(false);
+  });
+});
+
+// ===========================================================================
+// Section 31 – Readable Font (F-201)
+// ===========================================================================
+
+describe('Readable Font', () => {
+  afterEach(() => {
+    AccessibilityWidget.destroy();
+  });
+
+  test('readableFont feature item is rendered in the panel', () => {
+    AccessibilityWidget.init();
+    expect(document.querySelector('[data-feature="readableFont"]')).not.toBeNull();
+  });
+
+  test('enabling readableFont adds a11y-readable-font class to body', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('readableFont', true);
+    expect(document.body.classList.contains('a11y-readable-font')).toBe(true);
+  });
+
+  test('disabling readableFont removes a11y-readable-font class', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('readableFont', true);
+    w.setFeature('readableFont', false);
+    expect(document.body.classList.contains('a11y-readable-font')).toBe(false);
+  });
+
+  test('readableFont state persists and is restored on re-init', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('readableFont', true);
+    AccessibilityWidget.destroy();
+    AccessibilityWidget.init();
+    expect(document.body.classList.contains('a11y-readable-font')).toBe(true);
+    AccessibilityWidget.destroy();
+  });
+});
+
+// ===========================================================================
+// Section 32 – Saturation and Brightness Controls (F-202)
+// ===========================================================================
+
+describe('Saturation Control', () => {
+  afterEach(() => {
+    AccessibilityWidget.destroy();
+  });
+
+  test('saturation feature item is rendered in the panel', () => {
+    AccessibilityWidget.init();
+    expect(document.querySelector('[data-feature="saturation"]')).not.toBeNull();
+  });
+
+  test('setting saturation to 3 adds a11y-saturation-3 class to body', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('saturation', 3);
+    expect(document.body.classList.contains('a11y-saturation-3')).toBe(true);
+  });
+
+  test('changing saturation removes old class and adds new one', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('saturation', 2);
+    w.setFeature('saturation', 4);
+    expect(document.body.classList.contains('a11y-saturation-2')).toBe(false);
+    expect(document.body.classList.contains('a11y-saturation-4')).toBe(true);
+  });
+
+  test('setting saturation to 0 removes all saturation classes', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('saturation', 3);
+    w.setFeature('saturation', 0);
+    for (var i = 1; i <= 5; i++) {
+      expect(document.body.classList.contains('a11y-saturation-' + i)).toBe(false);
+    }
+  });
+
+  test('saturation state persists and is restored on re-init', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('saturation', 2);
+    AccessibilityWidget.destroy();
+    AccessibilityWidget.init();
+    expect(document.body.classList.contains('a11y-saturation-2')).toBe(true);
+    AccessibilityWidget.destroy();
+  });
+});
+
+describe('Brightness Control', () => {
+  afterEach(() => {
+    AccessibilityWidget.destroy();
+  });
+
+  test('brightness feature item is rendered in the panel', () => {
+    AccessibilityWidget.init();
+    expect(document.querySelector('[data-feature="brightness"]')).not.toBeNull();
+  });
+
+  test('setting brightness to 3 adds a11y-brightness-3 class to body', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('brightness', 3);
+    expect(document.body.classList.contains('a11y-brightness-3')).toBe(true);
+  });
+
+  test('changing brightness removes old class and adds new one', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('brightness', 1);
+    w.setFeature('brightness', 5);
+    expect(document.body.classList.contains('a11y-brightness-1')).toBe(false);
+    expect(document.body.classList.contains('a11y-brightness-5')).toBe(true);
+  });
+
+  test('setting brightness to 0 removes all brightness classes', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('brightness', 4);
+    w.setFeature('brightness', 0);
+    for (var i = 1; i <= 5; i++) {
+      expect(document.body.classList.contains('a11y-brightness-' + i)).toBe(false);
+    }
+  });
+
+  test('saturation and brightness can be active simultaneously', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('saturation', 2);
+    w.setFeature('brightness', 3);
+    expect(document.body.classList.contains('a11y-saturation-2')).toBe(true);
+    expect(document.body.classList.contains('a11y-brightness-3')).toBe(true);
+  });
+});
+
+// ===========================================================================
+// Section 33 – Suppress Notifications (F-211)
+// ===========================================================================
+
+describe('Suppress Notifications', () => {
+  afterEach(() => {
+    AccessibilityWidget.destroy();
+  });
+
+  test('suppressNotifications feature item is rendered in the panel', () => {
+    AccessibilityWidget.init();
+    expect(document.querySelector('[data-feature="suppressNotifications"]')).not.toBeNull();
+  });
+
+  test('enabling suppressNotifications adds a11y-suppress-notifications to body', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('suppressNotifications', true);
+    expect(document.body.classList.contains('a11y-suppress-notifications')).toBe(true);
+  });
+
+  test('disabling suppressNotifications removes the class', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('suppressNotifications', true);
+    w.setFeature('suppressNotifications', false);
+    expect(document.body.classList.contains('a11y-suppress-notifications')).toBe(false);
+  });
+
+  test('suppressNotifications state persists and is restored on re-init', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('suppressNotifications', true);
+    AccessibilityWidget.destroy();
+    AccessibilityWidget.init();
+    expect(document.body.classList.contains('a11y-suppress-notifications')).toBe(true);
+    AccessibilityWidget.destroy();
   });
 });

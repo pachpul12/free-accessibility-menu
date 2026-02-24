@@ -20,8 +20,8 @@ beforeEach(() => {
 // ===========================================================================
 
 describe('FEATURES array structure', () => {
-  test('contains exactly 23 features', () => {
-    expect(FEATURES).toHaveLength(23);
+  test('contains exactly 27 features', () => {
+    expect(FEATURES).toHaveLength(27);
   });
 
   test('every feature has required properties', () => {
@@ -189,14 +189,14 @@ describe('Feature definitions', () => {
 // ===========================================================================
 
 describe('Feature groups', () => {
-  test('visual group has 9 features', () => {
+  test('visual group has 11 features', () => {
     const visual = FEATURES.filter((f) => f.group === 'visual');
-    expect(visual).toHaveLength(9);
+    expect(visual).toHaveLength(11);
   });
 
-  test('content group has 10 features', () => {
+  test('content group has 12 features', () => {
     const content = FEATURES.filter((f) => f.group === 'content');
-    expect(content).toHaveLength(10);
+    expect(content).toHaveLength(12);
   });
 
   test('navigation group has 4 features', () => {
