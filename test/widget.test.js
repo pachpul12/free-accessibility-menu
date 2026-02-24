@@ -132,8 +132,8 @@ afterEach(() => {
 // ===========================================================================
 
 describe('Initialization & API', () => {
-  test('AccessibilityWidget.version is "2.10.0"', () => {
-    expect(AccessibilityWidget.version).toBe('2.10.0');
+  test('AccessibilityWidget.version is "2.11.0"', () => {
+    expect(AccessibilityWidget.version).toBe('2.11.0');
   });
 
   test('init() returns a widget instance', () => {
