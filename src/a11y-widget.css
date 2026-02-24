@@ -875,6 +875,23 @@ body.a11y-dark-mode .a11y-widget__position-btn--active {
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
+   Sensory Friendly Mode
+   Applies reduced brightness and saturation to calm visual intensity, and
+   disables animations/transitions for users with sensory processing needs.
+   Widget itself is excluded.
+   -------------------------------------------------------------------------- */
+
+body.a11y-sensory-friendly > *:not(.a11y-widget) {
+  filter: brightness(0.85) saturate(0.7) !important;
+}
+
+body.a11y-sensory-friendly *:not(.a11y-widget):not(.a11y-widget *) {
+  animation: none !important;
+  animation-duration: 0.001ms !important;
+  transition-duration: 0.001ms !important;
+}
+
+/* --------------------------------------------------------------------------
    Reduced Transparency
    Removes backdrop-filter/frosted-glass effects that can trigger
    vestibular disorders and impair readability for some users.

@@ -75,6 +75,12 @@ const ICONS = {
 
   tritanopia:
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2v20"/><circle cx="8" cy="14" r="2" fill="currentColor"/><circle cx="16" cy="10" r="2" fill="currentColor"/></svg>',
+
+  reducedTransparency:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="8" height="12" rx="1" stroke-dasharray="3 2"/><rect x="13" y="6" width="8" height="12" rx="1"/></svg>',
+
+  sensoryFriendly:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>',
 };
 
 // ---------------------------------------------------------------------------
@@ -279,6 +285,22 @@ const FEATURES = [
     icon: ICONS.tritanopia,
     group: 'visual',
     conflictsWith: ['deuteranopia', 'protanopia'],
+  },
+  {
+    id: 'reducedTransparency',
+    type: 'toggle',
+    cssClass: 'a11y-reduced-transparency',
+    default: false,
+    icon: ICONS.reducedTransparency,
+    group: 'visual',
+  },
+  {
+    id: 'sensoryFriendly',
+    type: 'toggle',
+    cssClass: 'a11y-sensory-friendly',
+    default: false,
+    icon: ICONS.sensoryFriendly,
+    group: 'content',
   },
 ];
 

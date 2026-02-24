@@ -54,6 +54,30 @@ function parseSVG(svgString) {
 }
 
 /**
+ * Detect the user's preferred language from the page/browser environment.
+ * Tries (in order): document.documentElement.lang → navigator.language →
+ * navigator.languages[0] → 'en'.
+ * Only the primary subtag (e.g. "en" from "en-US") is returned.
+ *
+ * @returns {string} BCP-47 primary subtag, lower-cased.
+ */
+function detectLanguage() {
+  var candidates = [
+    typeof document !== 'undefined' && document.documentElement && document.documentElement.lang,
+    typeof navigator !== 'undefined' && navigator.language,
+    typeof navigator !== 'undefined' && navigator.languages && navigator.languages[0],
+  ];
+  for (var i = 0; i < candidates.length; i++) {
+    var lang = candidates[i];
+    if (lang && typeof lang === 'string') {
+      var primary = lang.split('-')[0].toLowerCase();
+      if (primary) return primary;
+    }
+  }
+  return 'en';
+}
+
+/**
  * Create a DOM element with optional class name(s) and attributes.
  *
  * @param {string}  tag
@@ -155,11 +179,12 @@ function Widget(options) {
   options = options || {};
 
   // -- Configuration --------------------------------------------------------
-  this._language = options.defaultLanguage || 'en';
+  this._language = options.defaultLanguage || detectLanguage();
   this._onToggle = typeof options.onToggle === 'function' ? options.onToggle : null;
   this._onOpenMenu = typeof options.onOpenMenu === 'function' ? options.onOpenMenu : null;
   this._onCloseMenu = typeof options.onCloseMenu === 'function' ? options.onCloseMenu : null;
   this._position = options.position || 'bottom-right';
+  this._showLanguageSwitcher = options.showLanguageSwitcher !== false;
   this._toggleIconUrl = options.toggleIconUrl || TOGGLE_ICON_PNG;
   this._toggleIconHoverUrl = options.toggleIconHoverUrl || TOGGLE_ICON_HOVER_PNG;
   this._accessibilityStatementUrl = options.accessibilityStatementUrl || null;
@@ -419,7 +444,9 @@ Widget.prototype._buildDOM = function () {
   });
 
   // Language section
-  this._buildLanguageSection(this._contentEl);
+  if (this._showLanguageSwitcher) {
+    this._buildLanguageSection(this._contentEl);
+  }
 
   // Feature sections, grouped
   var groups = getGroups(this._enabledFeatures);
@@ -2105,6 +2132,18 @@ Widget.prototype.setLanguage = function (code) {
   this._applyLanguage(code);
   this._saveState();
   this._emit('a11y:langchange', { language: code });
+};
+
+/**
+ * Return the currently active language code.
+ *
+ * @returns {string} BCP-47 primary subtag, e.g. `"en"` or `"he"`.
+ *
+ * @example
+ * var lang = widget.getLanguage(); // "en"
+ */
+Widget.prototype.getLanguage = function () {
+  return this._language;
 };
 
 // ---------------------------------------------------------------------------

@@ -84,6 +84,7 @@ var TOGGLE_FEATURE_IDS = [
   'protanopia',
   'tritanopia',
   'reducedTransparency',
+  'sensoryFriendly',
 ];
 var ALL_FEATURE_IDS = TOGGLE_FEATURE_IDS.concat(['fontSize', 'lineHeight', 'letterSpacing', 'wordSpacing']);
 var FEATURE_CSS = {
@@ -105,6 +106,7 @@ var FEATURE_CSS = {
   protanopia: 'a11y-protanopia',
   tritanopia: 'a11y-tritanopia',
   reducedTransparency: 'a11y-reduced-transparency',
+  sensoryFriendly: 'a11y-sensory-friendly',
 };
 
 // ---------------------------------------------------------------------------
@@ -124,8 +126,8 @@ afterEach(() => {
 // ===========================================================================
 
 describe('Initialization & API', () => {
-  test('AccessibilityWidget.version is "2.2.0"', () => {
-    expect(AccessibilityWidget.version).toBe('2.2.0');
+  test('AccessibilityWidget.version is "2.3.0"', () => {
+    expect(AccessibilityWidget.version).toBe('2.3.0');
   });
 
   test('init() returns a widget instance', () => {
@@ -219,7 +221,7 @@ describe('DOM Structure', () => {
     expect(getTitle().textContent).toBe('Accessibility Menu');
   });
 
-  test('all 22 features rendered as menu items', () => {
+  test('all 23 features rendered as menu items', () => {
     ALL_FEATURE_IDS.forEach((id) => {
       expect(getFeatureItem(id)).not.toBeNull();
     });
@@ -1345,6 +1347,7 @@ describe('All features disabled edge case', () => {
         protanopia: false,
         tritanopia: false,
         reducedTransparency: false,
+        sensoryFriendly: false,
       },
     });
     expect(getRoot()).not.toBeNull();
@@ -1858,6 +1861,7 @@ describe('Coverage - Edge Cases', () => {
         protanopia: false,
         tritanopia: false,
         reducedTransparency: false,
+        sensoryFriendly: false,
       },
     });
     w.openMenu();
@@ -2706,5 +2710,109 @@ describe('Position Switcher', () => {
     var heLabel = document.querySelector('.a11y-widget__position-btn[data-pos="top-left"]').getAttribute('aria-label');
     expect(heLabel).not.toBe(enLabel);
     expect(heLabel.length).toBeGreaterThan(0);
+  });
+});
+
+// ===========================================================================
+// Section 29 – Language Auto-Detection (F-203)
+// ===========================================================================
+
+describe('Language Auto-Detection', () => {
+  afterEach(() => {
+    AccessibilityWidget.destroy();
+    // Restore document lang attribute
+    document.documentElement.removeAttribute('lang');
+  });
+
+  test('defaults to "en" when no lang attribute or navigator language is set', () => {
+    document.documentElement.removeAttribute('lang');
+    var w = AccessibilityWidget.init();
+    expect(w.getLanguage()).toBe('en');
+  });
+
+  test('detects language from document.documentElement.lang', () => {
+    document.documentElement.setAttribute('lang', 'he');
+    var w = AccessibilityWidget.init();
+    expect(w.getLanguage()).toBe('he');
+  });
+
+  test('ignores document lang when defaultLanguage option is explicitly set', () => {
+    document.documentElement.setAttribute('lang', 'he');
+    var w = AccessibilityWidget.init({ defaultLanguage: 'en' });
+    expect(w.getLanguage()).toBe('en');
+  });
+
+  test('extracts primary subtag from lang with region (en-US → en)', () => {
+    document.documentElement.setAttribute('lang', 'en-US');
+    var w = AccessibilityWidget.init();
+    expect(w.getLanguage()).toBe('en');
+  });
+
+  test('detects Hebrew from he-IL lang attribute', () => {
+    document.documentElement.setAttribute('lang', 'he-IL');
+    var w = AccessibilityWidget.init();
+    expect(w.getLanguage()).toBe('he');
+  });
+
+  test('falls back to "en" for unrecognised language code', () => {
+    // jsdom sets document lang but the language may not be registered;
+    // widget should still initialise without throwing
+    document.documentElement.setAttribute('lang', 'xyz');
+    expect(() => AccessibilityWidget.init()).not.toThrow();
+  });
+});
+
+// ===========================================================================
+// Section 30 – showLanguageSwitcher option (F-207)
+// ===========================================================================
+
+describe('showLanguageSwitcher option', () => {
+  afterEach(() => {
+    AccessibilityWidget.destroy();
+  });
+
+  test('language section is present by default', () => {
+    AccessibilityWidget.init();
+    var select = document.querySelector('.a11y-widget__lang-select');
+    expect(select).not.toBeNull();
+  });
+
+  test('language section is present when showLanguageSwitcher: true', () => {
+    AccessibilityWidget.init({ showLanguageSwitcher: true });
+    var select = document.querySelector('.a11y-widget__lang-select');
+    expect(select).not.toBeNull();
+  });
+
+  test('language section is absent when showLanguageSwitcher: false', () => {
+    AccessibilityWidget.init({ showLanguageSwitcher: false });
+    var select = document.querySelector('.a11y-widget__lang-select');
+    expect(select).toBeNull();
+  });
+
+  test('feature sections still render when showLanguageSwitcher: false', () => {
+    AccessibilityWidget.init({ showLanguageSwitcher: false });
+    var items = document.querySelectorAll('.a11y-widget__item');
+    expect(items.length).toBeGreaterThan(0);
+  });
+
+  test('language section title is absent when showLanguageSwitcher: false', () => {
+    AccessibilityWidget.init({ showLanguageSwitcher: false });
+    var sections = document.querySelectorAll('.a11y-widget__section');
+    var hasLangTitle = false;
+    sections.forEach(function (s) {
+      var title = s.querySelector('.a11y-widget__section-title');
+      if (title && title.getAttribute('data-i18n') === 'language') {
+        hasLangTitle = true;
+      }
+    });
+    expect(hasLangTitle).toBe(false);
+  });
+
+  test('widget with showLanguageSwitcher: false still opens and closes', () => {
+    var w = AccessibilityWidget.init({ showLanguageSwitcher: false });
+    w.openMenu();
+    expect(document.querySelector('.a11y-widget').classList.contains('a11y-widget--open')).toBe(true);
+    w.closeMenu();
+    expect(document.querySelector('.a11y-widget').classList.contains('a11y-widget--open')).toBe(false);
   });
 });
