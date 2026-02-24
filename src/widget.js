@@ -9,7 +9,7 @@
  */
 
 import { FEATURES, getFeature, applyFeature, resetAllFeatures } from './features.js';
-import { saveSettings, loadSettings, clearSettings, setStorageKey, getStorageKey, saveProfiles, loadProfiles } from './storage.js';
+import { saveSettings, loadSettings, clearSettings, setStorageKey, getStorageKey, saveProfiles, loadProfiles, setStorageMode } from './storage.js';
 import { getTranslation, getAvailableLanguages, getNativeName, isRTL } from './i18n.js';
 
 // ---------------------------------------------------------------------------
@@ -34,6 +34,48 @@ const CLOSE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 
 const MINUS_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/></svg>';
 
 const PLUS_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+
+// ---------------------------------------------------------------------------
+// Built-in Quick Start presets (F-103 Layer 1)
+// ---------------------------------------------------------------------------
+
+/**
+ * Five built-in "quick start" presets that apply a curated combination of
+ * features for common accessibility needs.  Each preset is rendered as a
+ * chip/button in the Quick Start section above the feature menu.
+ *
+ * Applying a preset first resets all active features, then calls
+ * `applySettings` with the preset's settings object.
+ *
+ * @type {Array<{id: string, labelKey: string, settings: Object}>}
+ */
+const BUILT_IN_PRESETS = [
+  {
+    id: 'low-vision',
+    labelKey: 'presetLowVision',
+    settings: { highContrast: true, fontSize: 3, underlineLinks: true, focusOutline: true },
+  },
+  {
+    id: 'dyslexia',
+    labelKey: 'presetDyslexia',
+    settings: { dyslexiaFont: true, lineHeight: 3, letterSpacing: 3, wordSpacing: 2, readingGuide: true },
+  },
+  {
+    id: 'adhd',
+    labelKey: 'presetAdhd',
+    settings: { pauseAnimations: true, readingGuide: true, focusMode: true, readableFont: true },
+  },
+  {
+    id: 'motor',
+    labelKey: 'presetMotor',
+    settings: { focusOutline: true, largeCursor: true },
+  },
+  {
+    id: 'migraine',
+    labelKey: 'presetMigraine',
+    settings: { darkMode: true, pauseAnimations: true },
+  },
+];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -156,6 +198,45 @@ function parseShortcut(shortcut) {
 }
 
 // ---------------------------------------------------------------------------
+// F-003: Plugin Architecture — built-in feature handlers + dispatch table
+// ---------------------------------------------------------------------------
+
+/**
+ * Built-in feature handlers for features whose activation requires complex
+ * DOM side-effects beyond a simple CSS class toggle.  Each entry maps a
+ * feature ID to `activate(featureId, value, widgetInstance)` and
+ * `deactivate(featureId, widgetInstance)` callbacks that are called through
+ * the same interface used by external plugins registered via
+ * `AccessibilityWidget.registerPlugin()`.
+ *
+ * Extracting these from the if-else chains inside `_toggleFeature` and
+ * `setFeature` satisfies PRD F-003 acceptance criteria:
+ *   "The readingGuide and textToSpeech special-cases are removed from
+ *    widget.js and live in their own plugin's activate/deactivate methods."
+ *
+ * @type {Object.<string, {activate?: function, deactivate?: function}>}
+ */
+var _HIGHLIGHT_HOVER_TAGS = ['P', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE', 'TD'];
+
+var _BUILTIN_FEATURE_HANDLERS = {
+  readingGuide: {
+    activate:   function (id, value, w) { w._activateReadingGuide(); },
+    deactivate: function (id, w)        { w._deactivateReadingGuide(); },
+  },
+  textToSpeech: {
+    activate:   function (id, value, w) { w._activateTTS(); },
+    deactivate: function (id, w)        { w._deactivateTTS(); },
+  },
+  // F-210: JS click handler supplements the CSS :hover rule to pin a highlight
+  // on the clicked text element until another element is clicked or the feature
+  // is turned off.
+  highlightHover: {
+    activate:   function (id, value, w) { w._activateHighlightHover(); },
+    deactivate: function (id, w)        { w._deactivateHighlightHover(); },
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Widget class
 // ---------------------------------------------------------------------------
 
@@ -190,9 +271,41 @@ function Widget(options) {
   this._accessibilityStatementUrl = options.accessibilityStatementUrl || null;
   this._keyboardShortcut = options.keyboardShortcut !== undefined ? options.keyboardShortcut : 'alt+a';
   this._parsedShortcut = parseShortcut(this._keyboardShortcut);
+  this._primaryColor = options.primaryColor || null;
+  this._panelTitle = options.panelTitle || null;
+  // disclaimerText: undefined = use i18n, false = suppress, string = custom
+  this._disclaimerText = (options.disclaimerText !== undefined) ? options.disclaimerText : undefined;
+  this._showPresets = options.showPresets !== false;
+  this._showTooltip = options.showTooltip !== false;
 
-  // Determine which features are enabled
+  // Determine which features are enabled (built-in + registered plugins)
   this._enabledFeatures = this._resolveEnabledFeatures(options.features);
+
+  // Build plugin handler map: featureId → handler object.
+  // Starts with built-in handlers; external plugins overlay on top.
+  this._pluginHandlerMap = Object.create(null);
+  var _bfhKeys = Object.keys(_BUILTIN_FEATURE_HANDLERS);
+  for (var _bk = 0; _bk < _bfhKeys.length; _bk++) {
+    this._pluginHandlerMap[_bfhKeys[_bk]] = _BUILTIN_FEATURE_HANDLERS[_bfhKeys[_bk]];
+  }
+  var _extPlugins = Widget._externalPlugins;
+  for (var _ep = 0; _ep < _extPlugins.length; _ep++) {
+    var _epFeatures = _extPlugins[_ep].features || [];
+    for (var _epf = 0; _epf < _epFeatures.length; _epf++) {
+      this._pluginHandlerMap[_epFeatures[_epf].id] = _extPlugins[_ep];
+    }
+  }
+
+  // Configure storage backend before setting the key
+  if (options.storage !== undefined) {
+    try {
+      setStorageMode(options.storage);
+    } catch (e) {
+      if (this._devMode) {
+        console.warn('[AccessibilityWidget devMode] Invalid storage option:', e.message);
+      }
+    }
+  }
 
   // Save original storage key and override if provided
   this._originalStorageKey = getStorageKey();
@@ -207,6 +320,14 @@ function Widget(options) {
   this._settings = {};
   this._isOpen = false;
   this._destroyed = false;
+
+  // -- Session tracking (in-memory, never persisted) -------------------------
+  this._sessionId = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+    ? crypto.randomUUID()
+    : ('s' + Date.now().toString(36) + Math.random().toString(36).substr(2, 9));
+  this._initTimestamp = Date.now();
+  this._menuOpenCount = 0;
+  this._featureStats = {};
 
   // -- DOM refs (populated by _buildDOM) ------------------------------------
   this._root = null;
@@ -229,22 +350,55 @@ function Widget(options) {
   // -- Zoom lock warning element (optional, shown if viewport blocks zoom) ---
   this._zoomWarnEl = null;
 
+  // -- First-visit tooltip ---------------------------------------------------
+  this._tooltipEl = null;
+  this._tooltipTimer = null;
+
+  // -- Screen-reader live region (aria-live="polite") -----------------------
+  this._announceEl = null;
+
   // -- Profiles section DOM refs --------------------------------------------
   this._profilesSection = null;
   this._profileNameInput = null;
   this._profileListEl = null;
 
+  // -- Quick Start presets section DOM ref ----------------------------------
+  this._presetsSection = null;
+
   // -- Position section DOM refs --------------------------------------------
   this._positionSection = null;
   this._positionBtns = {};   // pos string -> <button> element
 
+  // -- Highlight Hover (F-210) state -----------------------------------------
+  this._highlightedEl = null;           // currently click-pinned element
+  this._handleHighlightClick = this._onHighlightHoverClick.bind(this);
+
   // -- Reading Guide state ---------------------------------------------------
   this._readingGuideEl = null;
   this._handleReadingGuideMove = this._onReadingGuideMove.bind(this);
+  this._handleReadingGuideTouchMove = this._onReadingGuideTouchMove.bind(this);
+  this._rgRafScheduled = false;
+  this._rgRafPendingY = 0;
 
   // -- Text-to-Speech state --------------------------------------------------
   this._ttsEnabled = false;
+  this._ttsRate = 1.0;
+  this._ttsPaused = false;
+  this._ttsControlsEl = null;
+  this._ttsPauseBtn = null;
+  this._ttsSpeedDisplay = null;
+  this._ttsCurrentTarget = null;   // element being spoken right now
+  this._ttsOriginalHTML = null;    // saved innerHTML before word-span injection
   this._handleTTSClick = this._onTTSClick.bind(this);
+
+  // -- Dev mode state --------------------------------------------------------
+  // devMode: true = enabled, false = disabled, undefined = auto-detect
+  this._devMode = (options.devMode !== undefined)
+    ? options.devMode
+    : (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'development');
+  this._devAuditBadgeEl = null;
+  this._devAuditListEl = null;   // scrollable violation detail list (F-212)
+  this._devAuditCount = 0;
 
   // -- Bound event handlers (for clean removal) -----------------------------
   this._handleDocumentClick = this._onDocumentClick.bind(this);
@@ -261,8 +415,44 @@ function Widget(options) {
   this._applyAllFeatures();
   this._applyLanguage(this._language);
 
+  // Call mount() on external plugins so they can inject custom panel UI
+  for (var _mp = 0; _mp < _extPlugins.length; _mp++) {
+    if (typeof _extPlugins[_mp].mount === 'function') {
+      _extPlugins[_mp].mount(this._panel, this);
+    }
+  }
+
+  // Run dev mode audit after widget is fully mounted
+  if (this._devMode) {
+    this._runAltTextAudit();
+  }
+
+  // Show first-visit tooltip (only when no saved settings exist)
+  if (this._showTooltip && this._getActiveCount() === 0 && !loadSettings()) {
+    this._buildTooltip();
+  }
+
+  // Initialize featureStats after state is loaded (to capture persisted enabled state)
+  for (var i = 0; i < this._enabledFeatures.length; i++) {
+    var _fId = this._enabledFeatures[i].id;
+    this._featureStats[_fId] = {
+      enabled: !!(this._settings[_fId]),
+      toggleCount: 0,
+      lastActivated: (this._settings[_fId]) ? this._initTimestamp : null,
+    };
+  }
+
   this._emit('a11y:init', { settings: this.getSettings() });
 }
+
+/**
+ * Global registry of externally-registered plugins (F-003).
+ * Populated by `AccessibilityWidget.registerPlugin()` in `index.js`.
+ * The Widget constructor reads this array at instantiation time.
+ *
+ * @type {Array}
+ */
+Widget._externalPlugins = [];
 
 // ---------------------------------------------------------------------------
 // Internal: Feature resolution
@@ -278,18 +468,109 @@ function Widget(options) {
  * @returns {import('./features.js').FeatureDefinition[]}
  */
 Widget.prototype._resolveEnabledFeatures = function (featureOptions) {
+  var result;
   if (!featureOptions) {
-    return FEATURES.slice();
-  }
-
-  var result = [];
-  for (var i = 0; i < FEATURES.length; i++) {
-    var f = FEATURES[i];
-    if (featureOptions[f.id] !== false) {
-      result.push(f);
+    result = FEATURES.slice();
+  } else {
+    result = [];
+    for (var i = 0; i < FEATURES.length; i++) {
+      var f = FEATURES[i];
+      if (featureOptions[f.id] !== false) {
+        result.push(f);
+      }
     }
   }
+
+  // F-106: Auto-disable largeCursor on touch-only devices (CSS cursor has no effect).
+  // Only filter when the host explicitly did NOT pass features: { largeCursor: true }.
+  var userForcedLargeCursor = featureOptions && featureOptions['largeCursor'] === true;
+  if (!userForcedLargeCursor &&
+      typeof window !== 'undefined' &&
+      window.matchMedia &&
+      !window.matchMedia('(hover: hover)').matches) {
+    result = result.filter(function (f) { return f.id !== 'largeCursor'; });
+  }
+
+  // F-003: Merge features from registered external plugins
+  var extPlugins = Widget._externalPlugins;
+  for (var ep = 0; ep < extPlugins.length; ep++) {
+    var pluginFeatures = extPlugins[ep].features || [];
+    for (var pf = 0; pf < pluginFeatures.length; pf++) {
+      var pfeat = pluginFeatures[pf];
+      if (!featureOptions || featureOptions[pfeat.id] !== false) {
+        result.push(pfeat);
+      }
+    }
+  }
+
   return result;
+};
+
+// ---------------------------------------------------------------------------
+// Internal: State management
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// F-003: Plugin dispatch helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Return the feature definition for `featureId`, searching both the built-in
+ * FEATURES list and any registered external plugin feature lists.
+ *
+ * @param {string} featureId
+ * @returns {import('./features.js').FeatureDefinition|undefined}
+ */
+Widget.prototype._getFeatureDefinition = function (featureId) {
+  var def = getFeature(featureId);
+  if (def) { return def; }
+  // Search external plugin feature lists
+  var plugins = Widget._externalPlugins;
+  for (var p = 0; p < plugins.length; p++) {
+    var feats = plugins[p].features || [];
+    for (var f = 0; f < feats.length; f++) {
+      if (feats[f].id === featureId) { return feats[f]; }
+    }
+  }
+  return undefined;
+};
+
+/**
+ * Invoke the plugin handler (built-in or external) for a feature ID.
+ *
+ * If no handler is registered for `featureId` the call is a safe no-op.
+ * `activate(featureId, value, widgetInstance)` is called when `activate` is
+ * truthy; `deactivate(featureId, widgetInstance)` otherwise.
+ *
+ * External plugins may ignore the `widgetInstance` third argument — it is
+ * provided for built-in handlers that need access to internal widget state.
+ *
+ * @param {string}  featureId
+ * @param {boolean} activate  - `true` to activate, `false` to deactivate.
+ * @param {*}       [value]   - Feature value (passed to activate only).
+ */
+Widget.prototype._callFeatureHandler = function (featureId, activate, value) {
+  var handler = this._pluginHandlerMap[featureId];
+  if (!handler) { return; }
+  if (activate) {
+    if (typeof handler.activate === 'function') {
+      handler.activate(featureId, value, this);
+    }
+  } else {
+    if (typeof handler.deactivate === 'function') {
+      handler.deactivate(featureId, this);
+    }
+  }
+};
+
+/**
+ * Return all feature definitions available to this widget instance,
+ * including features contributed by registered external plugins.
+ *
+ * @returns {import('./features.js').FeatureDefinition[]}
+ */
+Widget.prototype.getAvailableFeatures = function () {
+  return this._enabledFeatures.slice();
 };
 
 // ---------------------------------------------------------------------------
@@ -305,6 +586,15 @@ Widget.prototype._loadState = function () {
   for (var i = 0; i < this._enabledFeatures.length; i++) {
     var f = this._enabledFeatures[i];
     defaults[f.id] = f.default;
+  }
+
+  // F-107: Pre-activate pauseAnimations when the OS prefers reduced motion and
+  // pauseAnimations is available in the enabled-feature list.
+  if (defaults.hasOwnProperty('pauseAnimations') &&
+      typeof window !== 'undefined' &&
+      window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    defaults['pauseAnimations'] = true;
   }
 
   var saved = loadSettings();
@@ -358,12 +648,10 @@ Widget.prototype._applyAllFeatures = function () {
     var f = this._enabledFeatures[i];
     applyFeature(f.id, this._settings[f.id]);
 
-    // Activate special features if persisted as active
-    if (f.id === 'readingGuide' && this._settings[f.id]) {
-      this._activateReadingGuide();
-    }
-    if (f.id === 'textToSpeech' && this._settings[f.id]) {
-      this._activateTTS();
+    // If the feature has a plugin handler and is currently active,
+    // call activate() to trigger any DOM side-effects.
+    if (this._settings[f.id]) {
+      this._callFeatureHandler(f.id, true, this._settings[f.id]);
     }
   }
 };
@@ -378,13 +666,16 @@ Widget.prototype._applyAllFeatures = function () {
 Widget.prototype._buildDOM = function () {
   // Root container
   this._root = createElement('div', WIDGET_CLASS);
+  if (this._primaryColor) {
+    this._root.style.setProperty('--a11y-primary', this._primaryColor);
+  }
   this._root.setAttribute('data-position', this._position);
 
   // --- Toggle button -------------------------------------------------------
   var toggleAttrs = {
     'aria-haspopup': 'menu',
     'aria-expanded': 'false',
-    'aria-label': this._t('menuTitle'),
+    'aria-label': this._panelTitle || this._t('menuTitle'),
     'aria-controls': 'a11y-widget-panel',
   };
   if (this._keyboardShortcut) {
@@ -426,7 +717,7 @@ Widget.prototype._buildDOM = function () {
   var header = createElement('div', 'a11y-widget__header');
 
   this._titleEl = createElement('span', 'a11y-widget__title');
-  this._titleEl.textContent = this._t('menuTitle');
+  this._titleEl.textContent = this._panelTitle || this._t('menuTitle');
   header.appendChild(this._titleEl);
 
   this._closeBtn = createElement('button', 'a11y-widget__close', {
@@ -435,26 +726,60 @@ Widget.prototype._buildDOM = function () {
   this._closeBtn.appendChild(parseSVG(CLOSE_ICON_SVG));
   header.appendChild(this._closeBtn);
 
+  if (this._devMode) {
+    // Badge is a <button> so keyboard users can expand the detail list (F-212)
+    this._devAuditBadgeEl = createElement('button', 'a11y-widget__dev-badge', {
+      'type': 'button',
+      'aria-expanded': 'false',
+      'aria-controls': 'a11y-dev-audit-list',
+    });
+    this._devAuditBadgeEl.setAttribute('aria-live', 'polite');
+    var self = this;
+    this._devAuditBadgeEl.addEventListener('click', function () {
+      self._toggleDevAuditList();
+    });
+    header.appendChild(this._devAuditBadgeEl);
+
+    // Scrollable detail list (hidden by default)
+    this._devAuditListEl = createElement('div', 'a11y-widget__dev-audit-list', {
+      'id': 'a11y-dev-audit-list',
+      'role': 'list',
+      'hidden': '',
+    });
+    header.appendChild(this._devAuditListEl);
+  }
+
   this._panel.appendChild(header);
 
   // Content wrapper (the actual menu role container)
   this._contentEl = createElement('div', 'a11y-widget__content', {
     'role': 'menu',
-    'aria-label': this._t('menuTitle'),
+    'aria-label': this._panelTitle || this._t('menuTitle'),
   });
 
-  // Language section
-  if (this._showLanguageSwitcher) {
-    this._buildLanguageSection(this._contentEl);
-  }
-
-  // Feature sections, grouped
+  // Feature sections, grouped (Visual → Content → Navigation)
   var groups = getGroups(this._enabledFeatures);
   for (var g = 0; g < groups.length; g++) {
     this._buildGroupSection(groups[g], this._contentEl);
   }
 
+  // Quick Start presets section (above the feature menu)
+  if (this._showPresets) {
+    this._buildPresetsSection(this._panel);
+  }
+
   this._panel.appendChild(this._contentEl);
+
+  // Language section — appended to panel OUTSIDE role="menu" (PRD §8.1, §8.3).
+  // Placing a <select> inside role="menuitem" violates aria-required-children;
+  // placing it outside the menu avoids the violation while keeping arrow-key
+  // reachability via _menuItems (which is panel-scoped, not menu-scoped).
+  if (this._showLanguageSwitcher) {
+    this._buildLanguageSection(this._panel);
+  }
+
+  // TTS controls (hidden by default, shown when TTS is active)
+  this._buildTTSControls();
 
   // Profiles section (between content and footer)
   this._buildProfilesSection(this._panel);
@@ -465,9 +790,11 @@ Widget.prototype._buildDOM = function () {
   // Footer
   var footer = createElement('div', 'a11y-widget__footer');
 
-  this._disclaimerEl = createElement('p', 'a11y-widget__disclaimer');
-  this._disclaimerEl.textContent = this._t('disclaimer');
-  footer.appendChild(this._disclaimerEl);
+  if (this._disclaimerText !== false) {
+    this._disclaimerEl = createElement('p', 'a11y-widget__disclaimer');
+    this._disclaimerEl.textContent = (typeof this._disclaimerText === 'string') ? this._disclaimerText : this._t('disclaimer');
+    footer.appendChild(this._disclaimerEl);
+  }
 
   this._resetBtn = createElement('button', 'a11y-widget__reset');
   this._resetBtn.textContent = this._t('resetAll');
@@ -489,6 +816,14 @@ Widget.prototype._buildDOM = function () {
 
   // Append to body
   document.body.appendChild(this._root);
+
+  // Screen-reader live region (visually hidden, announced by AT)
+  this._announceEl = createElement('div', 'a11y-widget__announce', {
+    'aria-live': 'polite',
+    'aria-atomic': 'true',
+    'aria-relevant': 'text',
+  });
+  this._root.appendChild(this._announceEl);
 
   // Inject SVG color-blind filter definitions
   this._injectColorBlindFilters();
@@ -520,8 +855,12 @@ Widget.prototype._buildLanguageSection = function (parent) {
   title.textContent = this._t('language');
   section.appendChild(title);
 
+  // role="none" — the <select> is the interactive control; wrapping it in a
+  // role="menuitem" creates an ARIA nesting violation (menuitem may not own
+  // an element with listbox/combobox semantics). The <select> is a natural
+  // tabstop and is reached via arrow-key navigation through _menuItems.
   var item = createElement('div', 'a11y-widget__item', {
-    'role': 'menuitem',
+    'role': 'none',
     'tabindex': '-1',
   });
 
@@ -691,6 +1030,134 @@ Widget.prototype._buildGroupSection = function (groupName, parent) {
  *
  * @param {HTMLElement} parent
  */
+/**
+ * Build and show the first-visit tooltip near the toggle button.
+ *
+ * The tooltip is shown only when:
+ *   1. `showTooltip` option is true (default).
+ *   2. No settings are stored in localStorage (first visit).
+ *
+ * It auto-dismisses after 5 s, or immediately on any click / keydown anywhere
+ * in the document.  Respects `prefers-reduced-motion`: when motion is reduced
+ * the tooltip appears instantly without a CSS transition.
+ */
+Widget.prototype._buildTooltip = function () {
+  var self = this;
+
+  var tooltip = createElement('div', 'a11y-widget__tooltip', {
+    'role': 'tooltip',
+    'id': 'a11y-widget-tooltip',
+  });
+  tooltip.textContent = this._t('tooltipMessage');
+
+  // Reference the tooltip from the toggle button for AT
+  this._toggleBtn.setAttribute('aria-describedby', 'a11y-widget-tooltip');
+
+  this._root.appendChild(tooltip);
+  this._tooltipEl = tooltip;
+
+  // Respect prefers-reduced-motion: skip animation class
+  var reduceMotion = typeof window !== 'undefined' &&
+    window.matchMedia &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!reduceMotion) {
+    tooltip.classList.add('a11y-widget__tooltip--animated');
+  }
+  // Trigger show
+  requestAnimationFrame(function () {
+    if (self._tooltipEl) {
+      self._tooltipEl.classList.add('a11y-widget__tooltip--visible');
+    }
+  });
+
+  // Auto-dismiss after 5 s
+  this._tooltipTimer = setTimeout(function () {
+    self._dismissTooltip();
+  }, 5000);
+
+  // Dismiss on any document interaction
+  this._handleTooltipDismiss = function () {
+    self._dismissTooltip();
+  };
+  document.addEventListener('click', this._handleTooltipDismiss, { once: true });
+  document.addEventListener('keydown', this._handleTooltipDismiss, { once: true });
+};
+
+/**
+ * Dismiss and remove the first-visit tooltip.
+ */
+Widget.prototype._dismissTooltip = function () {
+  if (this._tooltipTimer) {
+    clearTimeout(this._tooltipTimer);
+    this._tooltipTimer = null;
+  }
+  if (this._tooltipEl) {
+    this._tooltipEl.classList.remove('a11y-widget__tooltip--visible');
+    var el = this._tooltipEl;
+    // Remove from DOM after transition (or immediately if no transition)
+    var onEnd = function () {
+      if (el.parentNode) { el.parentNode.removeChild(el); }
+    };
+    el.addEventListener('transitionend', onEnd, { once: true });
+    // Fallback: force remove after 300 ms in case transitionend doesn't fire
+    setTimeout(onEnd, 300);
+    this._tooltipEl = null;
+  }
+  if (this._toggleBtn) {
+    this._toggleBtn.removeAttribute('aria-describedby');
+  }
+  if (this._handleTooltipDismiss) {
+    document.removeEventListener('click', this._handleTooltipDismiss);
+    document.removeEventListener('keydown', this._handleTooltipDismiss);
+    this._handleTooltipDismiss = null;
+  }
+};
+
+/**
+ * Build the Quick Start presets section and append it to `parent`.
+ *
+ * Renders a labelled group of preset chip-buttons.  Clicking a preset:
+ * 1. Calls `resetAll()` to clear all active features.
+ * 2. Calls `applySettings(preset.settings)` to activate the preset.
+ *
+ * Hidden via `showPresets: false` option.
+ *
+ * @param {HTMLElement} parent
+ */
+Widget.prototype._buildPresetsSection = function (parent) {
+  var self = this;
+
+  var section = createElement('div', 'a11y-widget__quick-start');
+
+  var titleEl = createElement('div', 'a11y-widget__quick-start-title', {
+    'data-i18n': 'quickStart',
+  });
+  titleEl.textContent = this._t('quickStart');
+  section.appendChild(titleEl);
+
+  var grid = createElement('div', 'a11y-widget__quick-start-grid');
+
+  for (var i = 0; i < BUILT_IN_PRESETS.length; i++) {
+    (function (preset) {
+      var btn = createElement('button', 'a11y-widget__preset-btn', {
+        'type': 'button',
+        'data-preset-id': preset.id,
+        'data-i18n': preset.labelKey,
+      });
+      btn.textContent = self._t(preset.labelKey);
+      btn.addEventListener('click', function () {
+        self.resetAll();
+        self.applySettings(preset.settings);
+      });
+      grid.appendChild(btn);
+    })(BUILT_IN_PRESETS[i]);
+  }
+
+  section.appendChild(grid);
+  this._presetsSection = section;
+  parent.appendChild(section);
+};
+
 Widget.prototype._buildProfilesSection = function (parent) {
   var self = this;
 
@@ -1082,11 +1549,11 @@ Widget.prototype._onPanelClick = function (e) {
     return;
   }
 
-  // Feature item (toggle)
+  // Feature item (toggle) — use _getFeatureDefinition to support plugin features (F-003)
   var item = this._findAncestorWithAttr(target, 'data-feature');
   if (item) {
     var fId = item.getAttribute('data-feature');
-    var feature = getFeature(fId);
+    var feature = this._getFeatureDefinition(fId);
     if (feature && feature.type === 'toggle') {
       this._toggleFeature(fId);
     }
@@ -1310,50 +1777,60 @@ Widget.prototype._toggleFeature = function (featureId) {
   var current = !!this._settings[featureId];
   var newValue = !current;
   this._settings[featureId] = newValue;
+  this._recordFeature(featureId, newValue);
 
   applyFeature(featureId, newValue);
   this._updateItemState(featureId, newValue);
 
   // Mutual exclusivity: disable conflicting features when enabling this one
   if (newValue) {
-    var def = getFeature(featureId);
+    var def = this._getFeatureDefinition(featureId);
     if (def && def.conflictsWith) {
       for (var c = 0; c < def.conflictsWith.length; c++) {
         var conflictId = def.conflictsWith[c];
         if (this._settings[conflictId]) {
           this._settings[conflictId] = false;
           applyFeature(conflictId, false);
+          this._callFeatureHandler(conflictId, false);
           this._updateItemState(conflictId, false);
         }
       }
     }
   }
 
-  // Special handling for Reading Guide
-  if (featureId === 'readingGuide') {
-    if (newValue) {
-      this._activateReadingGuide();
-    } else {
-      this._deactivateReadingGuide();
-    }
-  }
-
-  // Special handling for Text-to-Speech
-  if (featureId === 'textToSpeech') {
-    if (newValue) {
-      this._activateTTS();
-    } else {
-      this._deactivateTTS();
-    }
-  }
+  // Dispatch to plugin handler (built-in or external) for features with
+  // side-effects beyond the CSS class already applied by applyFeature().
+  this._callFeatureHandler(featureId, newValue, newValue);
 
   this._saveState();
+
+  // Update toggle button aria-label with new active count
+  this._updateToggleAriaLabel();
+
+  // Announce feature state change to screen readers
+  var featureDef = this._getFeatureDefinition(featureId);
+  var featureName = featureDef ? this._t(featureId) : featureId;
+  this._announce(featureName + ' ' + this._t(newValue ? 'featureEnabled' : 'featureDisabled'));
 
   if (this._onToggle) {
     this._onToggle(featureId, newValue);
   }
 
   this._emit('a11y:toggle', { featureId: featureId, value: newValue, settings: this.getSettings() });
+};
+
+/**
+ * Record a feature toggle event in the session stats.
+ *
+ * @param {string}  featureId
+ * @param {boolean} active
+ */
+Widget.prototype._recordFeature = function (featureId, active) {
+  var stat = this._featureStats && this._featureStats[featureId];
+  if (!stat) { return; }
+  stat.enabled = !!active;
+  stat.toggleCount++;
+  if (active) { stat.lastActivated = Date.now(); }
 };
 
 /**
@@ -1391,6 +1868,9 @@ Widget.prototype._adjustRange = function (featureId, action) {
   }
 
   this._saveState();
+
+  // Update toggle button aria-label with new active count
+  this._updateToggleAriaLabel();
 
   if (this._onToggle) {
     this._onToggle(featureId, next);
@@ -1466,6 +1946,60 @@ Widget.prototype._t = function (key) {
 };
 
 /**
+ * Count the number of features currently set to a truthy / non-zero value.
+ *
+ * @returns {number}
+ */
+Widget.prototype._getActiveCount = function () {
+  var count = 0;
+  var keys = Object.keys(this._settings);
+  for (var i = 0; i < keys.length; i++) {
+    if (this._settings[keys[i]]) { count++; }
+  }
+  return count;
+};
+
+/**
+ * Post a message into the widget's aria-live region so screen readers
+ * announce it.  The text is cleared after 3 s to prevent stale announcements
+ * from being re-read when the user navigates back.
+ *
+ * @param {string} text
+ */
+Widget.prototype._announce = function (text) {
+  if (!this._announceEl) { return; }
+  var self = this;
+  // Reset first so repeated identical strings are re-announced
+  this._announceEl.textContent = '';
+  // Use a tiny timeout so the DOM change is picked up by AT
+  setTimeout(function () {
+    if (self._announceEl) {
+      self._announceEl.textContent = text;
+    }
+    // Clear after 3 s so the stale text is not re-read
+    setTimeout(function () {
+      if (self._announceEl) {
+        self._announceEl.textContent = '';
+      }
+    }, 3000);
+  }, 50);
+};
+
+/**
+ * Refresh the toggle button's aria-label to include the active feature count.
+ * Format: "<menuTitle> (<n> <settingsActive>)"
+ */
+Widget.prototype._updateToggleAriaLabel = function () {
+  if (!this._toggleBtn) { return; }
+  var title = this._panelTitle || this._t('menuTitle');
+  var count = this._getActiveCount();
+  var label = count > 0
+    ? title + ' (' + count + ' ' + this._t('settingsActive') + ')'
+    : title;
+  this._toggleBtn.setAttribute('aria-label', label);
+};
+
+/**
  * Apply the current language to all text nodes in the widget DOM.
  *
  * @param {string} lang
@@ -1486,11 +2020,16 @@ Widget.prototype._applyLanguage = function (lang) {
   }
 
   // Update text content
-  this._titleEl.textContent = this._t('menuTitle');
-  this._toggleBtn.setAttribute('aria-label', this._t('menuTitle'));
-  this._contentEl.setAttribute('aria-label', this._t('menuTitle'));
+  if (!this._panelTitle) {
+    this._titleEl.textContent = this._t('menuTitle');
+    this._contentEl.setAttribute('aria-label', this._t('menuTitle'));
+  }
+  // Update toggle aria-label (includes active count)
+  this._updateToggleAriaLabel();
   this._closeBtn.setAttribute('aria-label', this._t('closeMenu'));
-  this._disclaimerEl.textContent = this._t('disclaimer');
+  if (this._disclaimerEl && this._disclaimerText === undefined) {
+    this._disclaimerEl.textContent = this._t('disclaimer');
+  }
   this._resetBtn.textContent = this._t('resetAll');
 
   // Update all elements with data-i18n attribute
@@ -1552,6 +2091,11 @@ Widget.prototype._applyLanguage = function (lang) {
   if (this._langSelect) {
     this._langSelect.value = lang;
   }
+
+  // Update TTS controls labels
+  if (this._ttsPauseBtn) {
+    this._ttsPauseBtn.textContent = this._ttsPaused ? this._t('ttsResume') : this._t('ttsPause');
+  }
 };
 
 // ---------------------------------------------------------------------------
@@ -1568,6 +2112,7 @@ Widget.prototype._activateReadingGuide = function () {
     document.body.appendChild(this._readingGuideEl);
   }
   document.addEventListener('mousemove', this._handleReadingGuideMove);
+  document.addEventListener('touchmove', this._handleReadingGuideTouchMove, { passive: true });
 };
 
 /**
@@ -1575,6 +2120,7 @@ Widget.prototype._activateReadingGuide = function () {
  */
 Widget.prototype._deactivateReadingGuide = function () {
   document.removeEventListener('mousemove', this._handleReadingGuideMove);
+  document.removeEventListener('touchmove', this._handleReadingGuideTouchMove);
   if (this._readingGuideEl && this._readingGuideEl.parentNode) {
     this._readingGuideEl.parentNode.removeChild(this._readingGuideEl);
   }
@@ -1587,9 +2133,100 @@ Widget.prototype._deactivateReadingGuide = function () {
  * @param {MouseEvent} e
  */
 Widget.prototype._onReadingGuideMove = function (e) {
-  if (this._readingGuideEl) {
-    this._readingGuideEl.style.top = (e.clientY - 6) + 'px';
+  if (!this._readingGuideEl) { return; }
+  // Store latest Y and schedule a single rAF write to avoid INP regression
+  // (PRD §7.4 — mousemove handler must be wrapped in requestAnimationFrame).
+  this._rgRafPendingY = e.clientY - 6;
+  if (this._rgRafScheduled) { return; }
+  this._rgRafScheduled = true;
+  var self = this;
+  requestAnimationFrame(function () {
+    self._rgRafScheduled = false;
+    if (self._readingGuideEl) {
+      self._readingGuideEl.style.top = self._rgRafPendingY + 'px';
+    }
+  });
+};
+
+/**
+ * Handle touchmove to reposition the reading guide bar.
+ *
+ * @param {TouchEvent} e
+ */
+Widget.prototype._onReadingGuideTouchMove = function (e) {
+  if (!this._readingGuideEl || !e.touches || !e.touches[0]) { return; }
+  // Throttle via rAF — shared flag with mousemove handler.
+  this._rgRafPendingY = e.touches[0].clientY - 6;
+  if (this._rgRafScheduled) { return; }
+  this._rgRafScheduled = true;
+  var self = this;
+  requestAnimationFrame(function () {
+    self._rgRafScheduled = false;
+    if (self._readingGuideEl) {
+      self._readingGuideEl.style.top = self._rgRafPendingY + 'px';
+    }
+  });
+};
+
+// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Internal: Highlight Hover (F-210)
+// ---------------------------------------------------------------------------
+
+/**
+ * Activate click-to-pin highlight behavior for the Highlight on Hover feature.
+ *
+ * The CSS `:hover` rule already provides hover highlighting via the
+ * `a11y-highlight-hover` body class.  This method adds a click listener so
+ * that clicking a text element pins a persistent `a11y-highlight-pinned` class
+ * on it until another element is clicked or the feature is disabled.
+ */
+Widget.prototype._activateHighlightHover = function () {
+  document.addEventListener('click', this._handleHighlightClick);
+};
+
+/**
+ * Deactivate click-to-pin highlight and clean up the pinned element.
+ */
+Widget.prototype._deactivateHighlightHover = function () {
+  document.removeEventListener('click', this._handleHighlightClick);
+  if (this._highlightedEl) {
+    this._highlightedEl.classList.remove('a11y-highlight-pinned');
+    this._highlightedEl = null;
   }
+};
+
+/**
+ * Handle document clicks to pin / unpin highlight on text elements (F-210).
+ *
+ * @param {MouseEvent} e
+ */
+Widget.prototype._onHighlightHoverClick = function (e) {
+  // Ignore clicks inside the widget panel
+  if (this._root && this._root.contains(e.target)) { return; }
+
+  // Walk up to find the nearest text-level element
+  var el = e.target;
+  while (el && el !== document.body) {
+    if (_HIGHLIGHT_HOVER_TAGS.indexOf(el.tagName) !== -1) { break; }
+    el = el.parentElement;
+  }
+
+  if (!el || el === document.body) { return; }
+
+  // Toggle: clicking the same element unpins it
+  if (this._highlightedEl === el) {
+    el.classList.remove('a11y-highlight-pinned');
+    this._highlightedEl = null;
+    return;
+  }
+
+  // Move pin to new element
+  if (this._highlightedEl) {
+    this._highlightedEl.classList.remove('a11y-highlight-pinned');
+  }
+  el.classList.add('a11y-highlight-pinned');
+  this._highlightedEl = el;
 };
 
 // ---------------------------------------------------------------------------
@@ -1601,7 +2238,14 @@ Widget.prototype._onReadingGuideMove = function (e) {
  */
 Widget.prototype._activateTTS = function () {
   this._ttsEnabled = true;
+  this._ttsPaused = false;
   document.addEventListener('click', this._handleTTSClick);
+  if (this._ttsControlsEl) {
+    this._ttsControlsEl.removeAttribute('hidden');
+    if (this._ttsPauseBtn) {
+      this._ttsPauseBtn.textContent = this._t('ttsPause');
+    }
+  }
 };
 
 /**
@@ -1609,19 +2253,96 @@ Widget.prototype._activateTTS = function () {
  */
 Widget.prototype._deactivateTTS = function () {
   this._ttsEnabled = false;
+  this._ttsPaused = false;
   document.removeEventListener('click', this._handleTTSClick);
   if (typeof speechSynthesis !== 'undefined') {
     speechSynthesis.cancel();
   }
-  // Remove any speaking highlights
+  // Clean up current TTS element (word spans + speaking highlight)
+  this._cleanupTTSElement();
+  // Remove any remaining speaking highlights from other elements
   var highlighted = document.querySelectorAll('.a11y-tts-speaking');
   for (var i = 0; i < highlighted.length; i++) {
     highlighted[i].classList.remove('a11y-tts-speaking');
   }
+  if (this._ttsControlsEl) {
+    this._ttsControlsEl.setAttribute('hidden', '');
+  }
+};
+
+/**
+ * Inject per-word `<span>` elements into a plain-text element for word-level
+ * highlighting during TTS playback (F-204). Only applied when the element has
+ * no child elements (purely a text node container) to avoid corrupting markup.
+ * Saves original `innerHTML` to `_ttsOriginalHTML` for restoration.
+ *
+ * @param {Element} el
+ */
+Widget.prototype._prepareTTSWordSpans = function (el) {
+  this._ttsCurrentTarget = el;
+  this._ttsOriginalHTML = null;
+
+  // Only wrap plain-text elements (no child elements)
+  if (el.children.length > 0) { return; }
+
+  var text = el.textContent || '';
+  if (!text.trim()) { return; }
+
+  this._ttsOriginalHTML = el.innerHTML;
+
+  // Build replacement HTML with per-word spans keyed by charIndex
+  var wordRe = /\S+/g;
+  var match;
+  var lastIndex = 0;
+  var html = '';
+
+  function escapeHTML(str) {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  while ((match = wordRe.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      html += escapeHTML(text.slice(lastIndex, match.index));
+    }
+    html += '<span class="a11y-tts-word" data-char-index="' + match.index + '">'
+          + escapeHTML(match[0]) + '</span>';
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) {
+    html += escapeHTML(text.slice(lastIndex));
+  }
+
+  el.innerHTML = html;
+};
+
+/**
+ * Remove word spans from `_ttsCurrentTarget` and restore its original HTML.
+ * Also removes `.a11y-tts-speaking` and `.a11y-tts-word-active` classes.
+ */
+Widget.prototype._cleanupTTSElement = function () {
+  var el = this._ttsCurrentTarget;
+  if (!el) { return; }
+
+  // Remove active word highlight
+  var active = el.querySelector('.a11y-tts-word-active');
+  if (active) { active.classList.remove('a11y-tts-word-active'); }
+
+  // Restore original markup if we injected word spans
+  if (this._ttsOriginalHTML !== null) {
+    el.innerHTML = this._ttsOriginalHTML;
+    this._ttsOriginalHTML = null;
+  }
+
+  el.classList.remove('a11y-tts-speaking');
+  this._ttsCurrentTarget = null;
 };
 
 /**
  * Handle click events for text-to-speech: read aloud the clicked element's text.
+ * Injects per-word spans and uses `onboundary` events for word-level highlighting.
  *
  * @param {MouseEvent} e
  */
@@ -1640,29 +2361,206 @@ Widget.prototype._onTTSClick = function (e) {
     return;
   }
 
-  // Cancel any ongoing speech
+  // Cancel any ongoing speech and clean up previous element
   speechSynthesis.cancel();
+  this._cleanupTTSElement();
 
-  // Remove previous highlights
+  // Remove stale speaking highlights from any other elements
   var prev = document.querySelectorAll('.a11y-tts-speaking');
   for (var i = 0; i < prev.length; i++) {
     prev[i].classList.remove('a11y-tts-speaking');
   }
 
-  // Highlight the target element
+  // Highlight the target element and inject word spans
   target.classList.add('a11y-tts-speaking');
+  this._prepareTTSWordSpans(target);
 
   var utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = this._language;
+  utterance.rate = this._ttsRate;
+
+  var self = this;
+
+  // Word-level highlight: fires as each word boundary is reached
+  utterance.onboundary = function (boundaryEvent) {
+    if (!self._ttsCurrentTarget) { return; }
+    var charIndex = boundaryEvent.charIndex;
+    var prevActive = self._ttsCurrentTarget.querySelector('.a11y-tts-word-active');
+    if (prevActive) { prevActive.classList.remove('a11y-tts-word-active'); }
+    var span = self._ttsCurrentTarget.querySelector('[data-char-index="' + charIndex + '"]');
+    if (span) { span.classList.add('a11y-tts-word-active'); }
+  };
 
   utterance.onend = function () {
-    target.classList.remove('a11y-tts-speaking');
+    self._cleanupTTSElement();
   };
   utterance.onerror = function () {
-    target.classList.remove('a11y-tts-speaking');
+    self._cleanupTTSElement();
   };
 
   speechSynthesis.speak(utterance);
+};
+
+/**
+ * Build the TTS controls section (pause/resume + speed).
+ */
+Widget.prototype._buildTTSControls = function () {
+  var self = this;
+  var el = createElement('div', 'a11y-widget__tts-controls');
+  el.setAttribute('hidden', '');
+  el.setAttribute('aria-live', 'polite');
+
+  // Pause/resume button
+  var pauseBtn = createElement('button', 'a11y-widget__tts-pause');
+  pauseBtn.textContent = this._t('ttsPause');
+  pauseBtn.addEventListener('click', function () {
+    self._toggleTTSPause();
+  });
+  el.appendChild(pauseBtn);
+
+  // Speed section
+  var speedSection = createElement('div', 'a11y-widget__tts-speed');
+  var speedLabel = createElement('span', 'a11y-widget__tts-speed-label');
+  speedLabel.textContent = this._t('ttsSpeed') + ': ';
+  speedSection.appendChild(speedLabel);
+
+  var slowerBtn = createElement('button', 'a11y-widget__tts-slower');
+  slowerBtn.textContent = this._t('ttsSlower');
+  slowerBtn.setAttribute('aria-label', this._t('ttsSlower'));
+  slowerBtn.addEventListener('click', function () {
+    self._changeTTSRate(-0.25);
+  });
+  speedSection.appendChild(slowerBtn);
+
+  var speedDisplay = createElement('span', 'a11y-widget__tts-rate');
+  speedDisplay.textContent = this._ttsRate.toFixed(2) + '\xd7';
+  speedSection.appendChild(speedDisplay);
+
+  var fasterBtn = createElement('button', 'a11y-widget__tts-faster');
+  fasterBtn.textContent = this._t('ttsFaster');
+  fasterBtn.setAttribute('aria-label', this._t('ttsFaster'));
+  fasterBtn.addEventListener('click', function () {
+    self._changeTTSRate(0.25);
+  });
+  speedSection.appendChild(fasterBtn);
+  el.appendChild(speedSection);
+
+  this._ttsControlsEl = el;
+  this._ttsPauseBtn = pauseBtn;
+  this._ttsSpeedDisplay = speedDisplay;
+  this._panel.appendChild(el);
+};
+
+/**
+ * Toggle the TTS pause/resume state.
+ */
+Widget.prototype._toggleTTSPause = function () {
+  if (this._ttsPaused) {
+    this._ttsPaused = false;
+    if (this._ttsPauseBtn) { this._ttsPauseBtn.textContent = this._t('ttsPause'); }
+    if (typeof speechSynthesis !== 'undefined') { speechSynthesis.resume(); }
+  } else {
+    this._ttsPaused = true;
+    if (this._ttsPauseBtn) { this._ttsPauseBtn.textContent = this._t('ttsResume'); }
+    if (typeof speechSynthesis !== 'undefined') { speechSynthesis.pause(); }
+  }
+};
+
+/**
+ * Adjust TTS playback rate by delta, clamped between 0.5 and 2.0.
+ *
+ * @param {number} delta
+ */
+Widget.prototype._changeTTSRate = function (delta) {
+  this._ttsRate = Math.min(2.0, Math.max(0.5, Math.round((this._ttsRate + delta) * 100) / 100));
+  if (this._ttsSpeedDisplay) {
+    this._ttsSpeedDisplay.textContent = this._ttsRate.toFixed(2) + '\xd7';
+  }
+};
+
+/**
+ * Add the dev-mode alt text audit method.
+ */
+Widget.prototype._runAltTextAudit = function () {
+  var violations = [];
+  var images = document.querySelectorAll('img');
+  for (var i = 0; i < images.length; i++) {
+    var img = images[i];
+    // Skip images inside the widget itself
+    if (this._root && this._root.contains(img)) { continue; }
+    // Flag images missing alt attribute entirely
+    if (!img.hasAttribute('alt')) {
+      img.classList.add('a11y-dev-violation');
+      img.setAttribute('data-a11y-audit', 'missing-alt');
+      violations.push(img);
+    }
+  }
+
+  // Also check for <svg> elements without accessible names
+  var svgs = document.querySelectorAll('svg:not([aria-hidden="true"])');
+  for (var j = 0; j < svgs.length; j++) {
+    var svg = svgs[j];
+    if (this._root && this._root.contains(svg)) { continue; }
+    var hasLabel = svg.getAttribute('aria-label') || svg.getAttribute('aria-labelledby');
+    var hasTitleChild = svg.querySelector('title');
+    if (!hasLabel && !hasTitleChild) {
+      svg.classList.add('a11y-dev-violation');
+      svg.setAttribute('data-a11y-audit', 'missing-accessible-name');
+      violations.push(svg);
+    }
+  }
+
+  this._devAuditCount = violations.length;
+
+  // Console report
+  if (violations.length > 0) {
+    console.warn('[AccessibilityWidget devMode] Alt text audit: ' + violations.length + ' violation(s) found. Elements marked with .a11y-dev-violation class.');
+  } else {
+    console.info('[AccessibilityWidget devMode] Alt text audit: No violations found.');
+  }
+
+  // Update badge text and ARIA label (F-212)
+  if (this._devAuditBadgeEl) {
+    var badgeText = this._t('devAuditBadge') + ': ' + violations.length;
+    this._devAuditBadgeEl.textContent = badgeText;
+    this._devAuditBadgeEl.setAttribute('aria-label', badgeText + ' — click to expand');
+  }
+
+  // Populate scrollable detail list (F-212)
+  if (this._devAuditListEl) {
+    this._devAuditListEl.innerHTML = '';
+    if (violations.length === 0) {
+      var emptyItem = createElement('div', 'a11y-widget__dev-audit-item', { 'role': 'listitem' });
+      emptyItem.textContent = this._t('devAuditNoIssues') || 'No issues found';
+      this._devAuditListEl.appendChild(emptyItem);
+    } else {
+      for (var v = 0; v < violations.length; v++) {
+        var el = violations[v];
+        var listItem = createElement('div', 'a11y-widget__dev-audit-item', { 'role': 'listitem' });
+        var tagInfo = el.tagName.toLowerCase();
+        var auditType = el.getAttribute('data-a11y-audit') || 'violation';
+        var selector = el.id ? '#' + el.id : (el.className ? '.' + el.className.split(' ')[0] : tagInfo);
+        listItem.textContent = tagInfo + '[' + auditType + ']: ' + selector;
+        this._devAuditListEl.appendChild(listItem);
+      }
+    }
+  }
+};
+
+/**
+ * Toggle the dev audit detail list open/closed (F-212).
+ * Called when the user clicks the dev audit badge button.
+ */
+Widget.prototype._toggleDevAuditList = function () {
+  if (!this._devAuditListEl || !this._devAuditBadgeEl) { return; }
+  var isHidden = this._devAuditListEl.hasAttribute('hidden');
+  if (isHidden) {
+    this._devAuditListEl.removeAttribute('hidden');
+    this._devAuditBadgeEl.setAttribute('aria-expanded', 'true');
+  } else {
+    this._devAuditListEl.setAttribute('hidden', '');
+    this._devAuditBadgeEl.setAttribute('aria-expanded', 'false');
+  }
 };
 
 // ---------------------------------------------------------------------------
@@ -1687,6 +2585,7 @@ Widget.prototype.openMenu = function () {
   if (this._isOpen || this._destroyed) {
     return;
   }
+  this._menuOpenCount++;
   this._isOpen = true;
   this._root.classList.add(OPEN_MODIFIER);
   this._toggleBtn.setAttribute('aria-expanded', 'true');
@@ -1695,6 +2594,12 @@ Widget.prototype.openMenu = function () {
   if (this._menuItems.length > 0) {
     this._menuItems[0].focus();
   }
+
+  // Announce panel open with active count to screen readers
+  var openCount = this._getActiveCount();
+  var openSummary = (this._panelTitle || this._t('menuTitle')) +
+    (openCount > 0 ? ' — ' + openCount + ' ' + this._t('settingsActive') : '');
+  this._announce(openSummary);
 
   if (this._onOpenMenu) {
     this._onOpenMenu();
@@ -1809,7 +2714,8 @@ Widget.prototype.setFeature = function (featureId, value) {
   if (this._destroyed) {
     return;
   }
-  var feature = getFeature(featureId);
+  // Support both built-in features and external plugin features (F-003)
+  var feature = this._getFeatureDefinition(featureId);
   if (!feature) {
     return;
   }
@@ -1820,6 +2726,7 @@ Widget.prototype.setFeature = function (featureId, value) {
       return;
     }
     this._settings[featureId] = newBool;
+    this._recordFeature(featureId, newBool);
     applyFeature(featureId, newBool);
     this._updateItemState(featureId, newBool);
 
@@ -1835,22 +2742,11 @@ Widget.prototype.setFeature = function (featureId, value) {
       }
     }
 
-    if (featureId === 'readingGuide') {
-      if (newBool) {
-        this._activateReadingGuide();
-      } else {
-        this._deactivateReadingGuide();
-      }
-    }
-    if (featureId === 'textToSpeech') {
-      if (newBool) {
-        this._activateTTS();
-      } else {
-        this._deactivateTTS();
-      }
-    }
+    // Dispatch to plugin handler (built-in or external)
+    this._callFeatureHandler(featureId, newBool, newBool);
 
     this._saveState();
+    this._updateToggleAriaLabel();
     if (this._onToggle) {
       this._onToggle(featureId, newBool);
     }
@@ -1868,6 +2764,7 @@ Widget.prototype.setFeature = function (featureId, value) {
       return;
     }
     this._settings[featureId] = numVal;
+    this._recordFeature(featureId, numVal > feature.min);
     applyFeature(featureId, numVal);
 
     var valueEl = this._rangeValueEls[featureId];
@@ -1876,6 +2773,7 @@ Widget.prototype.setFeature = function (featureId, value) {
     }
 
     this._saveState();
+    this._updateToggleAriaLabel();
     if (this._onToggle) {
       this._onToggle(featureId, numVal);
     }
@@ -2067,9 +2965,11 @@ Widget.prototype.getProfiles = function () {
  * });
  */
 Widget.prototype.resetAll = function () {
-  // Deactivate special features before resetting
-  this._deactivateReadingGuide();
-  this._deactivateTTS();
+  // Deactivate all plugin-handled features (built-in + external) that are active
+  var handlerIds = Object.keys(this._pluginHandlerMap);
+  for (var hi = 0; hi < handlerIds.length; hi++) {
+    this._callFeatureHandler(handlerIds[hi], false);
+  }
 
   // Reset all body classes
   resetAllFeatures();
@@ -2094,6 +2994,12 @@ Widget.prototype.resetAll = function () {
 
   // Clear storage
   clearSettings();
+
+  // Update toggle aria-label (count is now 0)
+  this._updateToggleAriaLabel();
+
+  // Announce reset to screen readers
+  this._announce(this._t('resetConfirmation'));
 
   this._emit('a11y:reset', { settings: this.getSettings() });
 };
@@ -2146,6 +3052,34 @@ Widget.prototype.getLanguage = function () {
   return this._language;
 };
 
+/**
+ * Return an in-memory session usage report for analytics integration.
+ *
+ * @returns {Object|null} Report object, or null after destroy().
+ */
+Widget.prototype.getReport = function () {
+  if (this._destroyed) { return null; }
+  var featuresCopy = {};
+  var ids = Object.keys(this._featureStats);
+  for (var i = 0; i < ids.length; i++) {
+    var id = ids[i];
+    var s = this._featureStats[id];
+    featuresCopy[id] = { enabled: s.enabled, toggleCount: s.toggleCount, lastActivated: s.lastActivated };
+  }
+  return {
+    version: '2.6.0',
+    session: {
+      sessionId: this._sessionId,
+      initTimestamp: this._initTimestamp,
+      menuOpenCount: this._menuOpenCount,
+      features: featuresCopy,
+      language: this._language,
+    },
+    persistedSettings: this.getSettings(),
+    enabledFeatureIds: this._enabledFeatures.map(function (f) { return f.id; }),
+  };
+};
+
 // ---------------------------------------------------------------------------
 // Public API: Lifecycle
 // ---------------------------------------------------------------------------
@@ -2193,11 +3127,19 @@ Widget.prototype.destroy = function () {
   this._destroyed = true;
   this._detachEvents();
 
-  // Clean up reading guide
-  this._deactivateReadingGuide();
+  // Deactivate all plugin-handled features (built-in + external)
+  var dHandlerIds = Object.keys(this._pluginHandlerMap);
+  for (var dhi = 0; dhi < dHandlerIds.length; dhi++) {
+    this._callFeatureHandler(dHandlerIds[dhi], false);
+  }
 
-  // Clean up text-to-speech
-  this._deactivateTTS();
+  // Call unmount() on external plugins so they can clean up their own DOM
+  var dPlugins = Widget._externalPlugins;
+  for (var dmp = 0; dmp < dPlugins.length; dmp++) {
+    if (typeof dPlugins[dmp].unmount === 'function') {
+      dPlugins[dmp].unmount(this);
+    }
+  }
 
   // Remove all feature classes from document.body
   resetAllFeatures();
@@ -2217,6 +3159,15 @@ Widget.prototype.destroy = function () {
     this._colorBlindSvgEl.parentNode.removeChild(this._colorBlindSvgEl);
   }
 
+  // Remove dev audit markers from DOM
+  if (this._devMode) {
+    var marked = document.querySelectorAll('[data-a11y-audit]');
+    for (var i = 0; i < marked.length; i++) {
+      marked[i].classList.remove('a11y-dev-violation');
+      marked[i].removeAttribute('data-a11y-audit');
+    }
+  }
+
   // Null out references
   this._root = null;
   this._toggleBtn = null;
@@ -2233,11 +3184,24 @@ Widget.prototype.destroy = function () {
   this._statementLinkEl = null;
   this._colorBlindSvgEl = null;
   this._zoomWarnEl = null;
+  this._announceEl = null;
+  this._dismissTooltip();
+  this._tooltipEl = null;
+  this._tooltipTimer = null;
   this._profilesSection = null;
   this._profileNameInput = null;
   this._profileListEl = null;
+  this._presetsSection = null;
   this._positionSection = null;
   this._positionBtns = {};
+  this._ttsControlsEl = null;
+  this._ttsPauseBtn = null;
+  this._ttsSpeedDisplay = null;
+  this._ttsCurrentTarget = null;
+  this._ttsOriginalHTML = null;
+  this._devAuditBadgeEl = null;
+  this._devAuditListEl = null;
+  this._featureStats = null;
 };
 
 export default Widget;

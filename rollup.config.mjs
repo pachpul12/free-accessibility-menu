@@ -34,6 +34,32 @@ function copyCSS() {
 }
 
 /**
+ * Plugin that copies the JSON Schema file from src/ to dist/.
+ */
+function copySchema() {
+  return {
+    name: 'copy-schema',
+    writeBundle() {
+      const srcPath = resolve(__dirname, 'src/config.schema.json');
+      const destDir = resolve(__dirname, 'dist');
+      const destPath = resolve(destDir, 'config.schema.json');
+
+      if (!existsSync(srcPath)) {
+        console.warn('[copy-schema] src/config.schema.json not found -- skipping.');
+        return;
+      }
+
+      if (!existsSync(destDir)) {
+        mkdirSync(destDir, { recursive: true });
+      }
+
+      writeFileSync(destPath, readFileSync(srcPath, 'utf-8'));
+      console.log('[copy-schema] Copied config.schema.json to dist/');
+    },
+  };
+}
+
+/**
  * Plugin that copies the TypeScript declaration file from src/ to dist/.
  */
 function copyDTS() {
@@ -68,7 +94,7 @@ export default [
       format: 'es',
       sourcemap: true,
     },
-    plugins: [copyCSS(), copyDTS()],
+    plugins: [copyCSS(), copyDTS(), copySchema()],
   },
 
   // ── CJS (for Node.js require()) ───────────────────────────────────────────
@@ -78,7 +104,7 @@ export default [
       file: 'dist/index.cjs',
       format: 'cjs',
       sourcemap: true,
-      exports: 'default',
+      exports: 'auto',
     },
   },
 
@@ -100,6 +126,28 @@ export default [
       file: 'dist/index.umd.min.js',
       format: 'umd',
       name: 'AccessibilityWidget',
+      sourcemap: true,
+    },
+    plugins: [terser()],
+  },
+
+  // ── Web Component (ESM — for direct <script type="module"> use) ───────────
+  {
+    input: 'src/element.js',
+    output: {
+      file: 'dist/element.js',
+      format: 'es',
+      sourcemap: true,
+    },
+  },
+
+  // ── Web Component (UMD minified — for CDN script tag use) ─────────────────
+  {
+    input: 'src/element.js',
+    output: {
+      file: 'dist/element.umd.min.js',
+      format: 'umd',
+      name: 'AccessibilityWidgetElement',
       sourcemap: true,
     },
     plugins: [terser()],

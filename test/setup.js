@@ -39,7 +39,9 @@ Object.defineProperty(window, 'localStorage', {
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: jest.fn().mockImplementation((query) => ({
-    matches: false,
+    // Default to desktop-hover device (hover: hover = true).
+    // prefers-reduced-motion and other queries default to false.
+    matches: query === '(hover: hover)',
     media: query,
     onchange: null,
     addListener: jest.fn(),    // deprecated but still used by some libraries

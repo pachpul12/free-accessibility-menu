@@ -544,7 +544,74 @@ body.a11y-dark-mode .a11y-widget__statement-link {
 }
 
 /* --------------------------------------------------------------------------
-   22. Profiles / Presets Section (.a11y-widget__profiles)
+   22. Quick Start Presets (.a11y-widget__quick-start)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__quick-start {
+  border-bottom: 1px solid var(--a11y-border);
+  padding: 8px 12px 10px;
+}
+
+.a11y-widget__quick-start-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #666666;
+  margin-bottom: 6px;
+}
+
+.a11y-widget__quick-start-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.a11y-widget__preset-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 14px;
+  border: 1px solid var(--a11y-primary);
+  background: transparent;
+  color: var(--a11y-primary);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.a11y-widget__preset-btn:hover {
+  background-color: var(--a11y-active-bg);
+}
+
+.a11y-widget__preset-btn:focus-visible {
+  outline: 2px solid var(--a11y-primary);
+  outline-offset: 2px;
+}
+
+/* Dark mode overrides */
+body.a11y-dark-mode .a11y-widget__quick-start {
+  border-color: #444444;
+}
+
+body.a11y-dark-mode .a11y-widget__quick-start-title {
+  color: #aaaaaa;
+}
+
+body.a11y-dark-mode .a11y-widget__preset-btn {
+  border-color: var(--a11y-primary);
+  color: var(--a11y-primary);
+}
+
+body.a11y-dark-mode .a11y-widget__preset-btn:hover {
+  background-color: rgba(26, 115, 232, 0.2);
+}
+
+/* --------------------------------------------------------------------------
+   23. Profiles / Presets Section (.a11y-widget__profiles)
    -------------------------------------------------------------------------- */
 
 .a11y-widget__profiles {
@@ -961,6 +1028,34 @@ body.a11y-suppress-notifications [class*="popup-banner"] {
 }
 
 /* --------------------------------------------------------------------------
+   Highlight on Hover
+   Highlights text elements on hover to help users track their reading
+   position on the page. Pure CSS — no DOM mutations.
+   -------------------------------------------------------------------------- */
+
+body.a11y-highlight-hover p:hover,
+body.a11y-highlight-hover li:hover,
+body.a11y-highlight-hover h1:hover,
+body.a11y-highlight-hover h2:hover,
+body.a11y-highlight-hover h3:hover,
+body.a11y-highlight-hover h4:hover,
+body.a11y-highlight-hover h5:hover,
+body.a11y-highlight-hover h6:hover,
+body.a11y-highlight-hover blockquote:hover,
+body.a11y-highlight-hover td:hover {
+  background-color: rgba(255, 240, 100, 0.35) !important;
+  outline: 2px solid rgba(220, 180, 0, 0.5) !important;
+  border-radius: 2px;
+}
+
+/* F-210: click-to-pin highlight — persists until another element is clicked */
+body.a11y-highlight-hover .a11y-highlight-pinned {
+  background-color: rgba(255, 220, 50, 0.5) !important;
+  outline: 2px solid rgba(180, 140, 0, 0.8) !important;
+  border-radius: 2px;
+}
+
+/* --------------------------------------------------------------------------
    High Contrast Mode
    -------------------------------------------------------------------------- */
 
@@ -1290,6 +1385,15 @@ body.a11y-invert-colors > *:not(.a11y-widget):not(.a11y-reading-guide-bar) canva
   background-color: rgba(26, 115, 232, 0.08) !important;
 }
 
+/* Word-level highlight spans injected during TTS playback (F-204) */
+.a11y-tts-word {
+  display: inline;
+}
+.a11y-tts-word-active {
+  background-color: rgba(26, 115, 232, 0.35) !important;
+  border-radius: 2px;
+}
+
 /* --------------------------------------------------------------------------
    Font Size Scaling (body.a11y-font-1 through body.a11y-font-5)
    -------------------------------------------------------------------------- */
@@ -1479,4 +1583,159 @@ body.a11y-focus-mode [role="banner"]:not(.a11y-widget):not(.a11y-widget *):hover
 body.a11y-focus-mode [role="contentinfo"]:not(.a11y-widget):not(.a11y-widget *):hover,
 body.a11y-focus-mode [role="navigation"]:not(.a11y-widget):not(.a11y-widget *):hover {
   opacity: 1;
+}
+
+/* --------------------------------------------------------------------------
+   TTS Controls
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__tts-controls {
+  padding: 8px 16px;
+  border-top: 1px solid var(--a11y-border);
+  background: var(--a11y-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.a11y-widget__tts-controls[hidden] {
+  display: none;
+}
+
+.a11y-widget__tts-pause {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--a11y-primary, #2563eb);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.a11y-widget__tts-speed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+}
+
+.a11y-widget__tts-rate {
+  font-weight: 600;
+  min-width: 40px;
+  text-align: center;
+}
+
+.a11y-widget__tts-slower,
+.a11y-widget__tts-faster {
+  padding: 4px 10px;
+  background: var(--a11y-item-bg);
+  border: 1px solid var(--a11y-border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-family: inherit;
+  color: var(--a11y-text);
+}
+
+/* --------------------------------------------------------------------------
+   Dev Mode Audit
+   -------------------------------------------------------------------------- */
+
+.a11y-dev-violation {
+  outline: 3px solid #dc2626 !important;
+  outline-offset: 2px !important;
+}
+
+.a11y-widget__dev-badge {
+  display: inline-block;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 4px;
+  vertical-align: middle;
+  border: none;
+  cursor: pointer;
+}
+.a11y-widget__dev-badge:focus {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+
+.a11y-widget__dev-audit-list {
+  max-height: 160px;
+  overflow-y: auto;
+  background: #1f1f1f;
+  border: 1px solid #dc2626;
+  border-radius: 4px;
+  margin-top: 4px;
+  padding: 4px 0;
+  font-size: 0.7rem;
+  font-family: monospace;
+}
+.a11y-widget__dev-audit-item {
+  padding: 2px 8px;
+  color: #fca5a5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.a11y-widget__dev-audit-item:first-child {
+  color: #86efac;
+}
+
+/* --------------------------------------------------------------------------
+   First-visit tooltip (.a11y-widget__tooltip)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  background: #1a1a1a;
+  color: #ffffff;
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 8px 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 10001;
+  /* Arrow */
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+}
+
+.a11y-widget__tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  right: 14px;
+  border: 6px solid transparent;
+  border-top-color: #1a1a1a;
+}
+
+.a11y-widget__tooltip--animated {
+  transition: opacity 0.2s ease;
+}
+
+.a11y-widget__tooltip--visible {
+  opacity: 1;
+}
+
+/* Screen-reader live region (visually hidden)
+   -------------------------------------------------------------------------- */
+
+.a11y-widget__announce {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

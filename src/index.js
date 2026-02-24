@@ -9,6 +9,8 @@
  */
 
 import Widget from './widget.js';
+import { FEATURES } from './features.js';
+import { getAvailableLanguages } from './i18n.js';
 
 // ---------------------------------------------------------------------------
 // Track the active widget instance (singleton by default)
@@ -215,7 +217,7 @@ const AccessibilityWidget = {
    * Semantic version of the library.
    * @type {string}
    */
-  version: '2.4.0',
+  version: '2.10.0',
 
   /**
    * Mount the accessibility widget and append it to `document.body`.
@@ -270,6 +272,28 @@ const AccessibilityWidget = {
       _instance = null;
     }
 
+    // Development mode option validation
+    if (options && (typeof process === 'undefined' || process.env.NODE_ENV !== 'production')) {
+      var _validPositions = ['bottom-right', 'bottom-left', 'top-right', 'top-left'];
+      if (options.position && _validPositions.indexOf(options.position) === -1) {
+        console.warn('[AccessibilityWidget] Invalid position: "' + options.position + '". Valid values: ' + _validPositions.join(', '));
+      }
+      if (options.features && typeof options.features === 'object') {
+        var _validFeatureIds = FEATURES.map(function(f) { return f.id; });
+        Object.keys(options.features).forEach(function(key) {
+          if (_validFeatureIds.indexOf(key) === -1) {
+            console.warn('[AccessibilityWidget] Unknown feature id: "' + key + '". Valid ids: ' + _validFeatureIds.join(', '));
+          }
+        });
+      }
+      if (options.defaultLanguage) {
+        var _registeredLangs = getAvailableLanguages();
+        if (_registeredLangs.indexOf(options.defaultLanguage) === -1) {
+          console.warn('[AccessibilityWidget] Language "' + options.defaultLanguage + '" is not registered. Available languages: ' + _registeredLangs.join(', '));
+        }
+      }
+    }
+
     _instance = new Widget(options);
     return _instance;
   },
@@ -308,6 +332,143 @@ const AccessibilityWidget = {
       _instance = null;
     }
   },
+
+  /**
+   * Return an in-memory session usage report, or null if no instance exists.
+   *
+   * @returns {Object|null}
+   */
+  getReport() {
+    return _instance ? _instance.getReport() : null;
+  },
+
+  /**
+   * Create a new, **independent** widget instance without affecting the
+   * singleton managed by `init()` / `getInstance()` / `destroy()`.
+   *
+   * Unlike `init()`, `createWidget()`:
+   * - Does **not** destroy any existing singleton instance.
+   * - Does **not** register the new instance as the singleton.
+   * - Does **not** change the value returned by `getInstance()`.
+   *
+   * Use this factory for **micro-frontend** scenarios where multiple
+   * independent widgets must coexist on the same page with different
+   * `storageKey` values.  The caller is responsible for managing the
+   * returned instance's lifecycle (call `instance.destroy()` when the
+   * component unmounts).
+   *
+   * **SSR-safe**: returns `null` when `window` or `document` is not defined.
+   *
+   * @param {WidgetOptions} [options={}] - Configuration for the new widget.
+   * @returns {Widget|null} The newly created instance, or `null` in
+   *   non-browser environments.
+   *
+   * @example <caption>Micro-frontend — two widgets with separate storage keys</caption>
+   * var headerWidget = AccessibilityWidget.createWidget({
+   *   storageKey: 'headerA11y',
+   *   position: 'top-right',
+   * });
+   * var footerWidget = AccessibilityWidget.createWidget({
+   *   storageKey: 'footerA11y',
+   *   position: 'bottom-left',
+   * });
+   *
+   * // Clean up when components unmount:
+   * headerWidget.destroy();
+   * footerWidget.destroy();
+   */
+  createWidget(options) {
+    // SSR guard — do nothing outside a browser context
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return null;
+    }
+    return new Widget(options);
+  },
+
+  /**
+   * Register an external plugin that contributes new features to the widget.
+   *
+   * Call this **before** `init()` so that the plugin's features are included
+   * when the widget DOM is built.  Plugins registered after `init()` will
+   * take effect the next time a new widget instance is created.
+   *
+   * @param {Object} plugin - Plugin object conforming to the `A11yPlugin` interface.
+   * @param {string}   plugin.id       - Unique plugin identifier.
+   * @param {string}   plugin.group    - Feature group key for display grouping.
+   * @param {Array}    plugin.features - Array of `FeatureDefinition` objects.
+   * @param {function} [plugin.activate]   - `activate(featureId, value, widgetInstance)`
+   * @param {function} [plugin.deactivate] - `deactivate(featureId, widgetInstance)`
+   * @param {function} [plugin.mount]      - `mount(panelElement, widgetInstance)` — called after DOM build.
+   * @param {function} [plugin.unmount]    - `unmount(widgetInstance)` — called before destroy.
+   * @throws {TypeError} If plugin is missing required `id` or `features` properties.
+   *
+   * @example
+   * AccessibilityWidget.registerPlugin({
+   *   id: 'cursor-size',
+   *   group: 'visual',
+   *   features: [
+   *     { id: 'largeCursor2', type: 'toggle', cssClass: 'a11y-cursor-xl', default: false, group: 'visual', icon: '' }
+   *   ],
+   *   activate: function (featureId, value) {
+   *     document.body.style.cursor = 'url(/cursors/xl.png), auto';
+   *   },
+   *   deactivate: function (featureId) {
+   *     document.body.style.cursor = '';
+   *   },
+   * });
+   * AccessibilityWidget.init();
+   */
+  registerPlugin(plugin) {
+    if (!plugin || typeof plugin.id !== 'string' || !Array.isArray(plugin.features)) {
+      throw new TypeError(
+        '[AccessibilityWidget] registerPlugin: plugin must have an `id` (string) and `features` (Array).'
+      );
+    }
+    Widget._externalPlugins.push(plugin);
+  },
+
+  /**
+   * Return all available feature definitions — built-in features plus any
+   * features contributed by registered external plugins.
+   *
+   * When an active widget instance exists, delegates to the instance's
+   * `getAvailableFeatures()` (which reflects the enabled-feature filter
+   * passed to `init()`).  When no instance is active, returns the full
+   * unfiltered built-in + plugin feature list.
+   *
+   * @returns {import('./features.js').FeatureDefinition[]}
+   *
+   * @example
+   * var features = AccessibilityWidget.getAvailableFeatures();
+   * console.log(features.map(function (f) { return f.id; }));
+   */
+  getAvailableFeatures() {
+    if (_instance) {
+      return _instance.getAvailableFeatures();
+    }
+    // No active instance — return built-in + registered plugin features
+    var all = FEATURES.slice();
+    var plugins = Widget._externalPlugins;
+    for (var i = 0; i < plugins.length; i++) {
+      var feats = plugins[i].features || [];
+      for (var j = 0; j < feats.length; j++) {
+        all.push(feats[j]);
+      }
+    }
+    return all;
+  },
+
+  /**
+   * Remove all registered external plugins.
+   *
+   * Intended for use in test environments only.  Clears `Widget._externalPlugins`
+   * so that plugins registered in one test do not bleed into subsequent tests.
+   *
+   * @internal
+   */
+  _clearPlugins() {
+    Widget._externalPlugins = [];
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -319,3 +480,7 @@ if (typeof window !== 'undefined') {
 }
 
 export default AccessibilityWidget;
+
+// Named re-exports for consumers who need direct access to i18n and storage utilities
+export { registerLanguage, getAvailableLanguages, getNativeName, isRTL } from './i18n.js';
+export { setStorageMode, getStorageMode } from './storage.js';

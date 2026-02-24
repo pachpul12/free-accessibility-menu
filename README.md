@@ -54,7 +54,7 @@ the entire website.
 
 ## Features
 
--   14 optional interface adjustment features
+-   28 optional interface adjustment features
 -   Zero runtime dependencies (vanilla JS + CSS)
 -   Keyboard operable menu
 -   RTL and i18n support (40 built-in languages: English, Hebrew, Chinese, Spanish, Arabic, Portuguese, French, German, Japanese, Russian, Hindi, Bengali, Punjabi, Indonesian, Urdu, Turkish, Vietnamese, Korean, Italian, Persian, Thai, Tamil, Marathi, Telugu, Gujarati, Polish, Malay, Dutch, Filipino, Ukrainian, Swahili, Swedish, Danish, Romanian, Greek, Czech, Hungarian, Kazakh, Serbian, Norwegian)
@@ -147,32 +147,60 @@ AccessibilityWidget.init({ defaultLanguage: 'en' });
 
 ### CDN (unpkg)
 
+Add the stylesheet in `<head>` and load the script with `defer` so it never
+blocks page render. The inline init script uses `DOMContentLoaded` as a
+belt-and-suspenders guard for environments that strip `defer`.
+
 ```html
-<link rel="stylesheet" href="https://unpkg.com/free-accessibility-menu/dist/a11y-widget.css">
-<script src="https://unpkg.com/free-accessibility-menu"></script>
-<script>
-  AccessibilityWidget.init({ defaultLanguage: 'en' });
-</script>
+<head>
+  <!-- CSS must be in <head> to prevent a flash of unstyled content -->
+  <link rel="stylesheet" href="https://unpkg.com/free-accessibility-menu@2.9.0/dist/a11y-widget.css">
+</head>
+<body>
+  <!-- defer keeps the parser unblocked; the script executes after HTML is parsed -->
+  <script defer src="https://unpkg.com/free-accessibility-menu@2.9.0/dist/index.umd.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      AccessibilityWidget.init({ defaultLanguage: 'en' });
+    });
+  </script>
+</body>
 ```
+
+> **Tip — pin to a specific version** (shown above as `@2.9.0`) so that breaking
+> changes in future releases cannot affect your page automatically.
+> Remove the version tag to always pull the latest release.
 
 ### CDN (jsDelivr)
 
 ```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/free-accessibility-menu/dist/a11y-widget.css">
-<script src="https://cdn.jsdelivr.net/npm/free-accessibility-menu"></script>
-<script>
-  AccessibilityWidget.init({ defaultLanguage: 'en' });
-</script>
+<head>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/free-accessibility-menu@2.9.0/dist/a11y-widget.css">
+</head>
+<body>
+  <script defer src="https://cdn.jsdelivr.net/npm/free-accessibility-menu@2.9.0/dist/index.umd.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      AccessibilityWidget.init({ defaultLanguage: 'en' });
+    });
+  </script>
+</body>
 ```
 
 ### Self-Hosted (Script Tag)
 
 ```html
-<link rel="stylesheet" href="dist/a11y-widget.css">
-<script src="dist/index.umd.min.js"></script>
-<script>
-  AccessibilityWidget.init({ defaultLanguage: 'en' });
-</script>
+<head>
+  <link rel="stylesheet" href="dist/a11y-widget.css">
+</head>
+<body>
+  <script defer src="dist/index.umd.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      AccessibilityWidget.init({ defaultLanguage: 'en' });
+    });
+  </script>
+</body>
 ```
 
 ## Setting the Initial Language
@@ -242,22 +270,77 @@ the chosen language immediately — no user interaction required.
 
 ## Features
 
-| Feature | Group | Type | Description |
-|---------|-------|------|-------------|
-| High Contrast | Visual | Toggle | White background, black text, high-contrast borders |
-| Dark Mode | Visual | Toggle | Dark colour scheme to reduce eye strain |
-| Font Size | Visual | Range (0-5) | Scales text from 100% up to 175% |
-| Pause Animations | Visual | Toggle | Stops CSS animations and transitions |
-| Invert Colors | Visual | Toggle | Inverts all page colours via CSS filter |
-| Dyslexia Font | Content | Toggle | Applies OpenDyslexic / Comic Sans font family |
-| Underline Links | Content | Toggle | Underlines all hyperlinks with thick decoration |
-| Hide Images | Content | Toggle | Hides images, SVGs, videos, and background images |
-| Text Spacing | Content | Toggle | Increases line height, letter spacing, word spacing |
-| Highlight Headings | Content | Toggle | Outlines h1-h6 with a blue border and background |
-| Focus Outline | Navigation | Toggle | Adds a bright orange 3px outline on focused elements |
-| Large Cursor | Navigation | Toggle | Enlarges the mouse cursor via custom SVG |
-| Reading Guide | Navigation | Toggle | Horizontal bar follows the mouse to aid line tracking |
-| Text to Speech | Navigation | Toggle | Click any text to hear it read aloud (Web Speech API) |
+28 optional interface adjustment features across four groups.
+
+### Visual Adjustments
+
+| Feature ID | Type | Description |
+|---|---|---|
+| `highContrast` | Toggle | White background, black text, high-contrast borders |
+| `darkMode` | Toggle | Dark colour scheme to reduce eye strain |
+| `fontSize` | Range (0–5) | Scales text from 100 % up to 175 % |
+| `pauseAnimations` | Toggle | Stops CSS animations and transitions |
+| `invertColors` | Toggle | Inverts all page colours via CSS `invert()` filter |
+| `deuteranopia` | Toggle | SVG colour-matrix correction for green-blind users |
+| `protanopia` | Toggle | SVG colour-matrix correction for red-blind users |
+| `tritanopia` | Toggle | SVG colour-matrix correction for blue-blind users |
+| `saturation` | Range (0–5) | De-saturates page colours (0 = greyscale) |
+| `brightness` | Range (0–5) | Reduces screen brightness for photosensitive users |
+
+### Content Adjustments
+
+| Feature ID | Type | Description |
+|---|---|---|
+| `dyslexiaFont` | Toggle | Applies OpenDyslexic / dyslexia-friendly font family |
+| `readableFont` | Toggle | High-legibility system-native font stack |
+| `underlineLinks` | Toggle | Underlines all hyperlinks with a thick text decoration |
+| `hideImages` | Toggle | Hides images, SVGs, videos, and background images |
+| `textSpacing` | Toggle | Applies WCAG minimum text spacing values |
+| `highlightHeadings` | Toggle | Outlines h1–h6 elements with a border and background |
+| `lineHeight` | Range (0–5) | Independent line-height control |
+| `letterSpacing` | Range (0–5) | Independent letter-spacing control |
+| `wordSpacing` | Range (0–5) | Independent word-spacing control |
+| `highlightHover` | Toggle | Highlights the paragraph under the pointer |
+| `suppressNotifications` | Toggle | CSS-only suppression of common chat widgets and banners |
+| `reducedTransparency` | Toggle | Removes backdrop-filter and transparency effects |
+| `sensoryFriendly` | Toggle | Combined motion + colour + notification reduction |
+
+### Navigation Aids
+
+| Feature ID | Type | Description |
+|---|---|---|
+| `focusOutline` | Toggle | Adds a bright orange 3 px outline on focused elements |
+| `largeCursor` | Toggle | Enlarges the mouse cursor via a custom SVG data URI |
+| `readingGuide` | Toggle | Horizontal bar follows the mouse to aid line tracking |
+| `textToSpeech` | Toggle | Click any text to have it read aloud (Web Speech API) |
+| `focusMode` | Toggle | Dims non-content regions (header/nav/aside/footer) |
+
+## WCAG Conformance
+
+The widget's own UI conforms to WCAG 2.2 Level AA. See
+[`docs/accessibility-conformance-report.md`](docs/accessibility-conformance-report.md)
+for the full Accessibility Conformance Report (ACR).
+
+The features above provide user-controlled adjustments that **assist** with the following WCAG Success Criteria on the host page:
+
+| Feature | WCAG SC Assisted | Level |
+|---|---|---|
+| High Contrast | 1.4.3 Contrast (Minimum) | AA |
+| Dark Mode | 1.4.3 Contrast (Minimum) | AA |
+| Font Size | 1.4.4 Resize Text | AA |
+| Pause Animations | 2.3.3 Animation from Interactions | AAA |
+| Invert Colors | 1.4.3 Contrast (Minimum) | AA |
+| Deuteranopia / Protanopia / Tritanopia filters | 1.4.1 Use of Color | A |
+| Dyslexia Font / Readable Font | 1.4.8 Visual Presentation | AAA |
+| Underline Links | 1.4.1 Use of Color | A |
+| Text Spacing | 1.4.12 Text Spacing | AA |
+| Line Height / Letter Spacing / Word Spacing | 1.4.12 Text Spacing | AA |
+| Highlight Headings | 1.3.1 Info and Relationships | A |
+| Focus Outline | 2.4.7 Focus Visible | AA |
+| Reading Guide | 2.4.3 Focus Order | A |
+| Focus Mode | 1.4.3 Contrast (Minimum) | AA |
+
+> **Important:** These are user-activated preferences, not automatic remediations. They do not make host pages WCAG-conformant. Site owners remain responsible for the accessibility of their own content.
 
 ## API
 
@@ -268,35 +351,51 @@ Initializes the widget and appends it to the page. Returns the widget instance.
 ```js
 var widget = AccessibilityWidget.init({
   // Language code for the initial UI language (default: 'en')
-  // All 10 built-in languages are always available in the selector.
   defaultLanguage: 'en',
 
-  // Disable specific features (all enabled by default)
+  // Disable specific features (all 28 are enabled by default)
   features: {
     textToSpeech: false,   // hides TTS from the menu
     readingGuide: false    // hides reading guide
   },
 
-  // Widget position: 'bottom-right' (default), 'bottom-left', etc.
+  // Widget position: 'bottom-right' (default), 'bottom-left', 'top-right', 'top-left'
   position: 'bottom-right',
 
   // Custom localStorage key (default: 'a11yWidgetSettings')
   storageKey: 'myAppA11y',
 
+  // Storage backend: 'localStorage' (default), 'sessionStorage', 'none', or custom object
+  storage: 'localStorage',
+
+  // URL of your site's accessibility statement (renders a link in the panel footer)
+  accessibilityStatementUrl: '/accessibility',
+
+  // Keyboard shortcut to toggle the menu (default: 'Alt+A'; false = disabled)
+  keyboardShortcut: 'Alt+A',
+
+  // Show quick-start preset buttons (default: true)
+  showPresets: true,
+
+  // Show language switcher in the panel (default: true)
+  showLanguageSwitcher: true,
+
+  // Show first-visit tooltip (default: true; suppressed if settings already exist)
+  showTooltip: true,
+
+  // Enable development-mode alt text audit (default: auto-detects NODE_ENV)
+  devMode: false,
+
   // Callback when any feature is toggled
-  onToggle: function (featureName, isActive) {
-    console.log(featureName + ': ' + isActive);
+  onToggle: function (featureId, newValue) {
+    console.log(featureId + ': ' + newValue);
   },
 
   // Callback when the menu opens
-  onOpenMenu: function () {
-    console.log('Menu opened');
-  },
+  onOpenMenu: function () { console.log('Menu opened'); },
 
   // Callback when the menu closes
-  onCloseMenu: function () {
-    console.log('Menu closed');
-  }
+  onCloseMenu: function () { console.log('Menu closed'); },
 });
 ```
 
@@ -308,17 +407,85 @@ Returns the current widget instance, or `null` if not initialized.
 
 Removes the widget from the DOM, detaches all event listeners, and restores the original `lang`/`dir` attributes.
 
+### `AccessibilityWidget.getReport()`
+
+Returns an in-session usage report object (feature activation counts, timestamps), or `null` if no instance exists.
+
 ### Instance Methods
 
 | Method | Description |
-|--------|-------------|
+|---|---|
 | `widget.openMenu()` | Opens the accessibility panel |
 | `widget.closeMenu()` | Closes the panel |
 | `widget.toggleMenu()` | Toggles open/close |
 | `widget.setLanguage(code)` | Switches UI language (e.g. `'he'`) |
-| `widget.getSettings()` | Returns a copy of current feature states |
-| `widget.resetAll()` | Resets all features to defaults, clears storage |
+| `widget.getSettings()` | Returns a snapshot of current feature states |
+| `widget.setFeature(id, value)` | Programmatically set a feature on/off or to a range value |
+| `widget.applySettings(settings)` | Apply a batch of feature values at once |
+| `widget.resetAll()` | Resets all features to defaults and clears storage |
+| `widget.saveProfile(name)` | Saves current settings as a named profile |
+| `widget.loadProfile(name)` | Restores a previously saved profile |
+| `widget.deleteProfile(name)` | Deletes a named profile |
+| `widget.getProfiles()` | Returns an object of all saved profiles |
+| `widget.getReport()` | Returns the session usage report |
 | `widget.destroy()` | Tears down the widget completely |
+
+### CustomEvents
+
+The widget dispatches namespaced `CustomEvent`s on `window`:
+
+| Event | `event.detail` | Fired when |
+|---|---|---|
+| `a11y:init` | `{ settings }` | Widget mounted to DOM |
+| `a11y:toggle` | `{ featureId, value, settings }` | A feature is enabled/disabled/adjusted |
+| `a11y:open` | `{}` | Panel opens |
+| `a11y:close` | `{}` | Panel closes |
+| `a11y:reset` | `{ settings }` | All features reset to defaults |
+| `a11y:langchange` | `{ language }` | Active language changes |
+| `a11y:destroy` | `{}` | Widget about to be torn down |
+| `a11y:profilesave` | `{ name, settings }` | A profile is saved |
+| `a11y:profileload` | `{ name, settings }` | A profile is loaded |
+| `a11y:profiledelete` | `{ name }` | A profile is deleted |
+
+```js
+window.addEventListener('a11y:toggle', function (e) {
+  console.log(e.detail.featureId, '→', e.detail.value);
+});
+```
+
+### Web Component
+
+An `<a11y-menu>` custom element is available as a zero-config HTML integration:
+
+```html
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/free-accessibility-menu/dist/a11y-widget.css">
+<script type="module" src="https://cdn.jsdelivr.net/npm/free-accessibility-menu/dist/element.js"></script>
+<a11y-menu config='{"defaultLanguage":"fr","showTooltip":false}'></a11y-menu>
+```
+
+The `config` attribute accepts a JSON string of `WidgetOptions`. The element re-initialises the widget when the attribute changes, making it compatible with SPA router-managed page transitions.
+
+### Named Exports (ESM)
+
+```js
+import {
+  registerLanguage,
+  getAvailableLanguages,
+  getNativeName,
+  isRTL,
+  setStorageMode,
+  getStorageMode,
+} from 'free-accessibility-menu';
+```
+
+| Export | Description |
+|---|---|
+| `registerLanguage(code, translations)` | Add a custom language at runtime |
+| `getAvailableLanguages()` | Returns an array of all registered language codes |
+| `getNativeName(code)` | Returns the native name of a language (e.g. `'עברית'` for `'he'`) |
+| `isRTL(code)` | Returns `true` if the language is right-to-left |
+| `setStorageMode(mode)` | Switch storage backend: `'localStorage'`, `'sessionStorage'`, `'none'`, or a custom object |
+| `getStorageMode()` | Returns the current storage backend object |
 
 ## Keyboard Navigation
 
@@ -401,25 +568,34 @@ npm run dev
 
 ```
 src/
-  index.js          Entry point, singleton API
-  widget.js         Core Widget class, DOM, events, lifecycle
-  features.js       14 feature definitions and body-class logic
-  storage.js        localStorage wrapper
-  i18n.js           Translation registry and RTL detection
+  index.js          Entry point, singleton API (init/getInstance/destroy)
+  widget.js         Core Widget class — DOM, events, lifecycle, profiles
+  features.js       28 feature definitions and body-class logic
+  element.js        <a11y-menu> Web Component wrapper
+  storage.js        Swappable storage backend (localStorage / sessionStorage / none / custom)
+  i18n.js           Translation registry — 40 languages, RTL detection
   a11y-widget.css   All styles (BEM, CSS variables, feature classes)
+  index.d.ts        TypeScript declarations
+docs/
+  accessibility-conformance-report.md   WCAG 2.2 AA conformance report
 test/
-  i18n.test.js      i18n module tests
-  storage.test.js   Storage module tests
-  features.test.js  Feature definitions and application tests
-  widget.test.js    Widget integration tests
-  a11y.test.js      axe-core accessibility tests
-examples/
-  index.html        Demo page
+  i18n.test.js          i18n module tests
+  storage.test.js       Storage module tests
+  features.test.js      Feature definitions and application tests
+  widget.test.js        Widget integration tests (400+ cases)
+  a11y.test.js          axe-core accessibility tests
+  visual-features.test.js   Visual feature rendering tests
+  example-page.test.js      Example page integration tests
+  themes-page.test.js       Themes example page tests
 dist/
-  a11y-widget.umd.js       UMD bundle
-  a11y-widget.umd.min.js   Minified UMD bundle
-  a11y-widget.esm.js       ES module bundle
-  a11y-widget.css           Stylesheet
+  index.js            ESM bundle
+  index.cjs           CJS bundle (Node.js require())
+  index.umd.js        UMD bundle (unminified)
+  index.umd.min.js    UMD bundle (minified, for CDNs)
+  element.js          Web Component — ESM
+  element.umd.min.js  Web Component — UMD minified
+  a11y-widget.css     Stylesheet
+  index.d.ts          TypeScript declarations
 ```
 
 ## Browser Support

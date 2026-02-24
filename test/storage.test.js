@@ -11,12 +11,15 @@ import {
   saveProfiles,
   loadProfiles,
   clearProfiles,
+  setStorageMode,
+  getStorageMode,
   STORAGE_KEY,
 } from '../src/storage.js';
 
-// Reset storage key after each test to avoid pollution
+// Reset storage key and mode after each test to avoid pollution
 afterEach(() => {
   try {
+    setStorageMode('localStorage');
     setStorageKey('a11yWidgetSettings');
   } catch (_e) {
     // ignore
@@ -374,5 +377,83 @@ describe('Multi-operation scenarios', () => {
 
     saveSettings({ newData: true });
     expect(loadSettings()).toEqual({ newData: true });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Storage mode (setStorageMode / getStorageMode)
+// ---------------------------------------------------------------------------
+
+describe('setStorageMode', () => {
+  afterEach(() => {
+    setStorageMode('localStorage');
+  });
+
+  test('default mode reads/writes via localStorage', () => {
+    saveSettings({ x: 1 });
+    expect(loadSettings()).toEqual({ x: 1 });
+    expect(localStorage.getItem('a11yWidgetSettings')).not.toBeNull();
+  });
+
+  test('mode "none" — save is a no-op, loadSettings returns null', () => {
+    setStorageMode('none');
+    saveSettings({ x: 1 });
+    expect(loadSettings()).toBeNull();
+  });
+
+  test('mode "none" — clearSettings is a no-op', () => {
+    setStorageMode('none');
+    expect(() => clearSettings()).not.toThrow();
+  });
+
+  test('mode "sessionStorage" — saves to sessionStorage', () => {
+    setStorageMode('sessionStorage');
+    saveSettings({ y: 2 });
+    expect(loadSettings()).toEqual({ y: 2 });
+    // sessionStorage is available via jsdom
+    expect(sessionStorage.getItem('a11yWidgetSettings')).not.toBeNull();
+  });
+
+  test('custom provider — getItem / setItem / removeItem called', () => {
+    var store = {};
+    var provider = {
+      getItem: (k) => store[k] ?? null,
+      setItem: (k, v) => { store[k] = v; },
+      removeItem: (k) => { delete store[k]; },
+    };
+    setStorageMode(provider);
+    saveSettings({ z: 3 });
+    expect(loadSettings()).toEqual({ z: 3 });
+    clearSettings();
+    expect(loadSettings()).toBeNull();
+  });
+
+  test('getStorageMode returns no-op provider for "none"', () => {
+    setStorageMode('none');
+    var p = getStorageMode();
+    expect(typeof p.getItem).toBe('function');
+    expect(p.getItem('anything')).toBeNull();
+  });
+
+  test('invalid mode string throws', () => {
+    expect(() => setStorageMode('cookies')).toThrow();
+  });
+
+  test('invalid object (missing setItem) throws', () => {
+    expect(() => setStorageMode({ getItem: () => null, removeItem: () => {} })).toThrow();
+  });
+
+  test('null throws', () => {
+    expect(() => setStorageMode(null)).toThrow();
+  });
+
+  test('switching back to localStorage after custom provider', () => {
+    var store = {};
+    setStorageMode({ getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; }, removeItem: (k) => { delete store[k]; } });
+    saveSettings({ custom: true });
+
+    setStorageMode('localStorage');
+    // localStorage was not written to, so loadSettings returns null
+    expect(loadSettings()).toBeNull();
   });
 });

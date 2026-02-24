@@ -87,6 +87,7 @@ var TOGGLE_FEATURE_IDS = [
   'sensoryFriendly',
   'readableFont',
   'suppressNotifications',
+  'highlightHover',
 ];
 var ALL_FEATURE_IDS = TOGGLE_FEATURE_IDS.concat(['fontSize', 'lineHeight', 'letterSpacing', 'wordSpacing', 'saturation', 'brightness']);
 var FEATURE_CSS = {
@@ -111,6 +112,7 @@ var FEATURE_CSS = {
   sensoryFriendly: 'a11y-sensory-friendly',
   readableFont: 'a11y-readable-font',
   suppressNotifications: 'a11y-suppress-notifications',
+  highlightHover: 'a11y-highlight-hover',
 };
 
 // ---------------------------------------------------------------------------
@@ -130,8 +132,8 @@ afterEach(() => {
 // ===========================================================================
 
 describe('Initialization & API', () => {
-  test('AccessibilityWidget.version is "2.4.0"', () => {
-    expect(AccessibilityWidget.version).toBe('2.4.0');
+  test('AccessibilityWidget.version is "2.10.0"', () => {
+    expect(AccessibilityWidget.version).toBe('2.10.0');
   });
 
   test('init() returns a widget instance', () => {
@@ -225,7 +227,7 @@ describe('DOM Structure', () => {
     expect(getTitle().textContent).toBe('Accessibility Menu');
   });
 
-  test('all 27 features rendered as menu items', () => {
+  test('all 28 features rendered as menu items', () => {
     ALL_FEATURE_IDS.forEach((id) => {
       expect(getFeatureItem(id)).not.toBeNull();
     });
@@ -1356,6 +1358,7 @@ describe('All features disabled edge case', () => {
         saturation: false,
         brightness: false,
         suppressNotifications: false,
+        highlightHover: false,
       },
     });
     expect(getRoot()).not.toBeNull();
@@ -1491,11 +1494,14 @@ describe('New Features - Reading Guide', () => {
   });
 
   test('readingGuide overlay follows mousemove', () => {
+    // rAF is synchronous in this test via mock so the DOM update is immediate.
+    var rafSpy = jest.spyOn(window, 'requestAnimationFrame').mockImplementation(function (fn) { fn(); return 0; });
     AccessibilityWidget.init();
     simulateClick(getFeatureItem('readingGuide'));
     var bar = document.querySelector('.a11y-reading-guide-bar');
     document.dispatchEvent(new MouseEvent('mousemove', { clientY: 200 }));
     expect(bar.style.top).toBe('194px'); // 200 - 6
+    rafSpy.mockRestore();
   });
 
   test('readingGuide persists to localStorage', () => {
@@ -1764,6 +1770,125 @@ describe('New Features - Text to Speech', () => {
     document.body.removeChild(p1);
     document.body.removeChild(p2);
   });
+
+  describe('F-204: word-level highlighting via onboundary', () => {
+    test('clicking plain-text element injects word spans', () => {
+      AccessibilityWidget.init();
+      simulateClick(getFeatureItem('textToSpeech'));
+
+      var p = document.createElement('p');
+      p.textContent = 'Hello world';
+      document.body.appendChild(p);
+      simulateClick(p);
+
+      var spans = p.querySelectorAll('.a11y-tts-word');
+      expect(spans.length).toBe(2);
+      expect(spans[0].textContent).toBe('Hello');
+      expect(spans[1].textContent).toBe('world');
+      document.body.removeChild(p);
+    });
+
+    test('word spans carry data-char-index attributes', () => {
+      AccessibilityWidget.init();
+      simulateClick(getFeatureItem('textToSpeech'));
+
+      var p = document.createElement('p');
+      p.textContent = 'Hello world';
+      document.body.appendChild(p);
+      simulateClick(p);
+
+      var spans = p.querySelectorAll('.a11y-tts-word');
+      expect(spans[0].getAttribute('data-char-index')).toBe('0');
+      expect(spans[1].getAttribute('data-char-index')).toBe('6');
+      document.body.removeChild(p);
+    });
+
+    test('onboundary adds a11y-tts-word-active to the matching span', () => {
+      AccessibilityWidget.init();
+      simulateClick(getFeatureItem('textToSpeech'));
+
+      var p = document.createElement('p');
+      p.textContent = 'Hello world';
+      document.body.appendChild(p);
+      simulateClick(p);
+
+      var utterance = global.SpeechSynthesisUtterance.mock.results[
+        global.SpeechSynthesisUtterance.mock.results.length - 1
+      ].value;
+
+      utterance.onboundary({ charIndex: 0 });
+      var active = p.querySelector('.a11y-tts-word-active');
+      expect(active).not.toBeNull();
+      expect(active.textContent).toBe('Hello');
+
+      // Move to next word: previous span loses active class
+      utterance.onboundary({ charIndex: 6 });
+      active = p.querySelector('.a11y-tts-word-active');
+      expect(active).not.toBeNull();
+      expect(active.textContent).toBe('world');
+      var spans = p.querySelectorAll('.a11y-tts-word');
+      expect(spans[0].classList.contains('a11y-tts-word-active')).toBe(false);
+      document.body.removeChild(p);
+    });
+
+    test('onend restores original plain text (removes word spans)', () => {
+      AccessibilityWidget.init();
+      simulateClick(getFeatureItem('textToSpeech'));
+
+      var p = document.createElement('p');
+      p.textContent = 'Hello world';
+      document.body.appendChild(p);
+      simulateClick(p);
+
+      var utterance = global.SpeechSynthesisUtterance.mock.results[
+        global.SpeechSynthesisUtterance.mock.results.length - 1
+      ].value;
+      utterance.onend();
+
+      expect(p.querySelectorAll('.a11y-tts-word').length).toBe(0);
+      expect(p.textContent).toBe('Hello world');
+      document.body.removeChild(p);
+    });
+
+    test('elements with child elements skip word-span injection', () => {
+      AccessibilityWidget.init();
+      simulateClick(getFeatureItem('textToSpeech'));
+
+      var p = document.createElement('p');
+      var strong = document.createElement('strong');
+      strong.textContent = 'bold';
+      p.appendChild(strong);
+      p.appendChild(document.createTextNode(' text'));
+      document.body.appendChild(p);
+      simulateClick(p);
+
+      // No word spans injected — element has child elements
+      expect(p.querySelectorAll('.a11y-tts-word').length).toBe(0);
+      // Element-level highlight still applied
+      expect(p.classList.contains('a11y-tts-speaking')).toBe(true);
+      document.body.removeChild(p);
+    });
+
+    test('deactivating TTS restores original HTML when word spans are active', () => {
+      AccessibilityWidget.init();
+      simulateClick(getFeatureItem('textToSpeech'));
+
+      var p = document.createElement('p');
+      p.textContent = 'Hello world';
+      document.body.appendChild(p);
+      simulateClick(p);
+
+      // Word spans injected
+      expect(p.querySelectorAll('.a11y-tts-word').length).toBe(2);
+
+      // Deactivate TTS
+      simulateClick(getFeatureItem('textToSpeech'));
+
+      expect(p.querySelectorAll('.a11y-tts-word').length).toBe(0);
+      expect(p.textContent).toBe('Hello world');
+      document.body.removeChild(p);
+    });
+  });
 });
 
 // ===========================================================================
@@ -1797,8 +1922,9 @@ describe('Coverage - Edge Cases', () => {
     AccessibilityWidget.init();
     var w = AccessibilityWidget.getInstance();
     w.openMenu();
-    // The language item is the first menu item
-    var langItem = getAllMenuItems()[0];
+    // The language item is the last menu item (language section rendered after feature groups per PRD §8.1)
+    var allItems = getAllMenuItems();
+    var langItem = allItems[allItems.length - 1];
     langItem.focus();
     // Press Enter on the language row itself (not on a lang button)
     simulateKeydown(langItem, 'Enter');
@@ -1874,6 +2000,7 @@ describe('Coverage - Edge Cases', () => {
         saturation: false,
         brightness: false,
         suppressNotifications: false,
+        highlightHover: false,
       },
     });
     w.openMenu();
@@ -2989,5 +3116,1189 @@ describe('Suppress Notifications', () => {
     AccessibilityWidget.init();
     expect(document.body.classList.contains('a11y-suppress-notifications')).toBe(true);
     AccessibilityWidget.destroy();
+  });
+});
+
+// ===========================================================================
+// 34. Branding Options
+// ===========================================================================
+
+describe('Branding Options', () => {
+  afterEach(() => { AccessibilityWidget.destroy(); });
+
+  test('primaryColor sets --a11y-primary CSS custom property on root', () => {
+    AccessibilityWidget.init({ primaryColor: '#ff0000' });
+    var root = document.querySelector('.a11y-widget');
+    expect(root.style.getPropertyValue('--a11y-primary')).toBe('#ff0000');
+  });
+
+  test('no primaryColor does not set CSS custom property', () => {
+    AccessibilityWidget.init();
+    var root = document.querySelector('.a11y-widget');
+    expect(root.style.getPropertyValue('--a11y-primary')).toBe('');
+  });
+
+  test('panelTitle overrides the title text', () => {
+    AccessibilityWidget.init({ panelTitle: 'My Accessibility Tools' });
+    var title = document.querySelector('.a11y-widget__title');
+    expect(title.textContent).toBe('My Accessibility Tools');
+  });
+
+  test('panelTitle updates toggle button aria-label', () => {
+    AccessibilityWidget.init({ panelTitle: 'My Accessibility Tools' });
+    var btn = document.querySelector('.a11y-widget__toggle');
+    expect(btn.getAttribute('aria-label')).toBe('My Accessibility Tools');
+  });
+
+  test('panelTitle not provided shows default translated title', () => {
+    AccessibilityWidget.init();
+    var title = document.querySelector('.a11y-widget__title');
+    expect(title.textContent.length).toBeGreaterThan(0);
+    expect(title.textContent).not.toBe('My Accessibility Tools');
+  });
+
+  test('disclaimerText: false suppresses the disclaimer element', () => {
+    AccessibilityWidget.init({ disclaimerText: false });
+    var disclaimer = document.querySelector('.a11y-widget__disclaimer');
+    expect(disclaimer).toBeNull();
+  });
+
+  test('disclaimerText: string overrides disclaimer content', () => {
+    AccessibilityWidget.init({ disclaimerText: 'Custom disclaimer text' });
+    var disclaimer = document.querySelector('.a11y-widget__disclaimer');
+    expect(disclaimer).not.toBeNull();
+    expect(disclaimer.textContent).toBe('Custom disclaimer text');
+  });
+
+  test('no disclaimerText shows default disclaimer', () => {
+    AccessibilityWidget.init();
+    var disclaimer = document.querySelector('.a11y-widget__disclaimer');
+    expect(disclaimer).not.toBeNull();
+    expect(disclaimer.textContent.length).toBeGreaterThan(0);
+  });
+});
+
+// ===========================================================================
+// 35. Development Mode Validation
+// ===========================================================================
+
+describe('Development Mode Validation', () => {
+  var warnSpy;
+  beforeEach(() => { warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {}); });
+  afterEach(() => { warnSpy.mockRestore(); AccessibilityWidget.destroy(); });
+
+  test('warns on invalid position string', () => {
+    AccessibilityWidget.init({ position: 'center' });
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid position'));
+  });
+
+  test('does not warn on valid position strings', () => {
+    ['bottom-right', 'bottom-left', 'top-right', 'top-left'].forEach(pos => {
+      AccessibilityWidget.destroy();
+      warnSpy.mockClear();
+      AccessibilityWidget.init({ position: pos });
+      var positionWarnings = warnSpy.mock.calls.filter(c => c[0].includes('Invalid position'));
+      expect(positionWarnings).toHaveLength(0);
+    });
+  });
+
+  test('warns on unknown feature id in features option', () => {
+    AccessibilityWidget.init({ features: { highContrast: true, unknownFeature: true } });
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Unknown feature id'));
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('unknownFeature'));
+  });
+
+  test('does not warn on valid feature ids', () => {
+    AccessibilityWidget.init({ features: { highContrast: true, darkMode: false } });
+    var featureWarnings = warnSpy.mock.calls.filter(c => c[0].includes('Unknown feature id'));
+    expect(featureWarnings).toHaveLength(0);
+  });
+
+  test('warns on unregistered defaultLanguage', () => {
+    AccessibilityWidget.init({ defaultLanguage: 'xyz' });
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('"xyz" is not registered'));
+  });
+
+  test('does not warn on registered defaultLanguage', () => {
+    AccessibilityWidget.init({ defaultLanguage: 'en' });
+    var langWarnings = warnSpy.mock.calls.filter(c => c[0].includes('is not registered'));
+    expect(langWarnings).toHaveLength(0);
+  });
+});
+
+// ===========================================================================
+// 36. Session Usage Report
+// ===========================================================================
+
+describe('Session Usage Report', () => {
+  afterEach(() => { AccessibilityWidget.destroy(); });
+
+  test('getReport returns an object with version, session, persistedSettings, enabledFeatureIds', () => {
+    var w = AccessibilityWidget.init();
+    var report = w.getReport();
+    expect(report).not.toBeNull();
+    expect(report).toHaveProperty('version');
+    expect(report).toHaveProperty('session');
+    expect(report).toHaveProperty('persistedSettings');
+    expect(report).toHaveProperty('enabledFeatureIds');
+  });
+
+  test('getReport().session has sessionId, initTimestamp, menuOpenCount, features, language', () => {
+    var w = AccessibilityWidget.init();
+    var s = w.getReport().session;
+    expect(typeof s.sessionId).toBe('string');
+    expect(typeof s.initTimestamp).toBe('number');
+    expect(s.menuOpenCount).toBe(0);
+    expect(typeof s.features).toBe('object');
+    expect(s.language).toBe('en');
+  });
+
+  test('menuOpenCount increments on openMenu()', () => {
+    var w = AccessibilityWidget.init();
+    w.openMenu();
+    expect(w.getReport().session.menuOpenCount).toBe(1);
+    w.closeMenu();
+    w.openMenu();
+    expect(w.getReport().session.menuOpenCount).toBe(2);
+  });
+
+  test('feature stats track toggle activity', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('highContrast', true);
+    var stat = w.getReport().session.features['highContrast'];
+    expect(stat.enabled).toBe(true);
+    expect(stat.toggleCount).toBeGreaterThan(0);
+    expect(stat.lastActivated).not.toBeNull();
+  });
+
+  test('feature stats reflect disabled state', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('highContrast', true);
+    w.setFeature('highContrast', false);
+    var stat = w.getReport().session.features['highContrast'];
+    expect(stat.enabled).toBe(false);
+    expect(stat.toggleCount).toBe(2);
+  });
+
+  test('enabledFeatureIds lists active feature ids', () => {
+    var w = AccessibilityWidget.init();
+    var ids = w.getReport().enabledFeatureIds;
+    expect(Array.isArray(ids)).toBe(true);
+    expect(ids.length).toBeGreaterThan(0);
+    expect(ids).toContain('highContrast');
+  });
+
+  test('AccessibilityWidget.getReport() delegates to instance', () => {
+    AccessibilityWidget.init();
+    var report = AccessibilityWidget.getReport();
+    expect(report).not.toBeNull();
+    expect(report).toHaveProperty('session');
+  });
+
+  test('AccessibilityWidget.getReport() returns null when no instance', () => {
+    AccessibilityWidget.destroy();
+    expect(AccessibilityWidget.getReport()).toBeNull();
+  });
+
+  test('getReport() returns null after destroy()', () => {
+    var w = AccessibilityWidget.init();
+    w.destroy();
+    expect(w.getReport()).toBeNull();
+  });
+});
+
+// ===========================================================================
+// 37. Highlight on Hover
+// ===========================================================================
+
+describe('Highlight on Hover', () => {
+  afterEach(() => { AccessibilityWidget.destroy(); });
+
+  test('highlightHover feature item is rendered in the panel', () => {
+    AccessibilityWidget.init();
+    expect(document.querySelector('[data-feature="highlightHover"]')).not.toBeNull();
+  });
+
+  test('enabling highlightHover adds a11y-highlight-hover class to body', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('highlightHover', true);
+    expect(document.body.classList.contains('a11y-highlight-hover')).toBe(true);
+  });
+
+  test('disabling highlightHover removes the class', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('highlightHover', true);
+    w.setFeature('highlightHover', false);
+    expect(document.body.classList.contains('a11y-highlight-hover')).toBe(false);
+  });
+
+  test('highlightHover state persists and is restored on re-init', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('highlightHover', true);
+    AccessibilityWidget.destroy();
+    AccessibilityWidget.init();
+    expect(document.body.classList.contains('a11y-highlight-hover')).toBe(true);
+    AccessibilityWidget.destroy();
+  });
+
+  describe('F-210: click-to-pin highlight', () => {
+    afterEach(() => { AccessibilityWidget.destroy(); });
+
+    test('clicking a <p> element adds a11y-highlight-pinned class', () => {
+      var w = AccessibilityWidget.init();
+      w.setFeature('highlightHover', true);
+      var p = document.createElement('p');
+      p.textContent = 'Hello world';
+      document.body.appendChild(p);
+      p.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(p.classList.contains('a11y-highlight-pinned')).toBe(true);
+      document.body.removeChild(p);
+    });
+
+    test('clicking same element again removes the pin', () => {
+      var w = AccessibilityWidget.init();
+      w.setFeature('highlightHover', true);
+      var p = document.createElement('p');
+      p.textContent = 'Hello world';
+      document.body.appendChild(p);
+      p.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      p.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(p.classList.contains('a11y-highlight-pinned')).toBe(false);
+      document.body.removeChild(p);
+    });
+
+    test('clicking a different element moves the pin', () => {
+      var w = AccessibilityWidget.init();
+      w.setFeature('highlightHover', true);
+      var p1 = document.createElement('p');
+      var p2 = document.createElement('p');
+      p1.textContent = 'First';
+      p2.textContent = 'Second';
+      document.body.appendChild(p1);
+      document.body.appendChild(p2);
+      p1.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      p2.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(p1.classList.contains('a11y-highlight-pinned')).toBe(false);
+      expect(p2.classList.contains('a11y-highlight-pinned')).toBe(true);
+      document.body.removeChild(p1);
+      document.body.removeChild(p2);
+    });
+
+    test('clicks inside the widget panel are ignored', () => {
+      var w = AccessibilityWidget.init();
+      w.setFeature('highlightHover', true);
+      // Click a button inside the widget root — should NOT add pinned class to it
+      var btn = document.querySelector('.a11y-widget__toggle');
+      if (btn) {
+        btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(btn.classList.contains('a11y-highlight-pinned')).toBe(false);
+      }
+    });
+
+    test('deactivating highlightHover removes pinned class', () => {
+      var w = AccessibilityWidget.init();
+      w.setFeature('highlightHover', true);
+      var p = document.createElement('p');
+      p.textContent = 'Hello';
+      document.body.appendChild(p);
+      p.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(p.classList.contains('a11y-highlight-pinned')).toBe(true);
+      w.setFeature('highlightHover', false);
+      expect(p.classList.contains('a11y-highlight-pinned')).toBe(false);
+      document.body.removeChild(p);
+    });
+
+    test('destroy() removes pinned class', () => {
+      var w = AccessibilityWidget.init();
+      w.setFeature('highlightHover', true);
+      var p = document.createElement('p');
+      p.textContent = 'Hello';
+      document.body.appendChild(p);
+      p.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      AccessibilityWidget.destroy();
+      expect(p.classList.contains('a11y-highlight-pinned')).toBe(false);
+      document.body.removeChild(p);
+    });
+
+    test('clicking non-text element (div) walks up to text ancestor', () => {
+      var w = AccessibilityWidget.init();
+      w.setFeature('highlightHover', true);
+      var p = document.createElement('p');
+      var span = document.createElement('span');
+      span.textContent = 'inside span';
+      p.appendChild(span);
+      document.body.appendChild(p);
+      span.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(p.classList.contains('a11y-highlight-pinned')).toBe(true);
+      document.body.removeChild(p);
+    });
+  });
+});
+
+describe('Reading Guide Touch Support', () => {
+  afterEach(() => { AccessibilityWidget.destroy(); });
+
+  test('activating readingGuide adds touchmove listener', () => {
+    var w = AccessibilityWidget.init();
+    var addSpy = jest.spyOn(document, 'addEventListener');
+    w.setFeature('readingGuide', true);
+    var touchmoveCalls = addSpy.mock.calls.filter(function(c) { return c[0] === 'touchmove'; });
+    expect(touchmoveCalls.length).toBeGreaterThan(0);
+    addSpy.mockRestore();
+  });
+
+  test('deactivating readingGuide removes touchmove listener', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('readingGuide', true);
+    var removeSpy = jest.spyOn(document, 'removeEventListener');
+    w.setFeature('readingGuide', false);
+    var touchmoveCalls = removeSpy.mock.calls.filter(function(c) { return c[0] === 'touchmove'; });
+    expect(touchmoveCalls.length).toBeGreaterThan(0);
+    removeSpy.mockRestore();
+  });
+
+  test('touch move updates reading guide bar position', () => {
+    var rafSpy = jest.spyOn(window, 'requestAnimationFrame').mockImplementation(function (fn) { fn(); return 0; });
+    var w = AccessibilityWidget.init();
+    w.setFeature('readingGuide', true);
+    var bar = document.querySelector('.a11y-reading-guide-bar');
+    expect(bar).not.toBeNull();
+    // Simulate touchmove by calling internal handler directly
+    var touchEvent = { touches: [{ clientY: 150 }] };
+    w._onReadingGuideTouchMove(touchEvent);
+    expect(bar.style.top).toBe('144px');
+    rafSpy.mockRestore();
+  });
+
+  test('touch move is safe when no touches exist', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('readingGuide', true);
+    expect(() => w._onReadingGuideTouchMove({ touches: [] })).not.toThrow();
+  });
+});
+
+describe('Enhanced TTS Controls', () => {
+  afterEach(() => { AccessibilityWidget.destroy(); });
+
+  test('TTS controls section is in the DOM but hidden initially', () => {
+    AccessibilityWidget.init();
+    var controls = document.querySelector('.a11y-widget__tts-controls');
+    expect(controls).not.toBeNull();
+    expect(controls.hasAttribute('hidden')).toBe(true);
+  });
+
+  test('TTS controls become visible when TTS is activated', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('textToSpeech', true);
+    var controls = document.querySelector('.a11y-widget__tts-controls');
+    expect(controls.hasAttribute('hidden')).toBe(false);
+  });
+
+  test('TTS controls are hidden again when TTS is deactivated', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('textToSpeech', true);
+    w.setFeature('textToSpeech', false);
+    var controls = document.querySelector('.a11y-widget__tts-controls');
+    expect(controls.hasAttribute('hidden')).toBe(true);
+  });
+
+  test('pause button is rendered in TTS controls', () => {
+    AccessibilityWidget.init();
+    expect(document.querySelector('.a11y-widget__tts-pause')).not.toBeNull();
+  });
+
+  test('speed display shows 1.00\xd7 by default', () => {
+    AccessibilityWidget.init();
+    var speedEl = document.querySelector('.a11y-widget__tts-rate');
+    expect(speedEl).not.toBeNull();
+    expect(speedEl.textContent).toBe('1.00\xd7');
+  });
+
+  test('faster button increases TTS rate', () => {
+    var w = AccessibilityWidget.init();
+    var fasterBtn = document.querySelector('.a11y-widget__tts-faster');
+    fasterBtn.click();
+    expect(w._ttsRate).toBeCloseTo(1.25, 2);
+  });
+
+  test('slower button decreases TTS rate', () => {
+    var w = AccessibilityWidget.init();
+    var slowerBtn = document.querySelector('.a11y-widget__tts-slower');
+    slowerBtn.click();
+    expect(w._ttsRate).toBeCloseTo(0.75, 2);
+  });
+
+  test('TTS rate is clamped at minimum 0.5', () => {
+    var w = AccessibilityWidget.init();
+    for (var i = 0; i < 10; i++) { w._changeTTSRate(-0.25); }
+    expect(w._ttsRate).toBeCloseTo(0.5, 2);
+  });
+
+  test('TTS rate is clamped at maximum 2.0', () => {
+    var w = AccessibilityWidget.init();
+    for (var i = 0; i < 10; i++) { w._changeTTSRate(0.25); }
+    expect(w._ttsRate).toBeCloseTo(2.0, 2);
+  });
+
+  test('speed display updates when rate changes', () => {
+    AccessibilityWidget.init();
+    var w = AccessibilityWidget.getInstance();
+    w._changeTTSRate(0.25);
+    var speedEl = document.querySelector('.a11y-widget__tts-rate');
+    expect(speedEl.textContent).toBe('1.25\xd7');
+  });
+
+  test('pause toggles TTS pause state', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('textToSpeech', true);
+    expect(w._ttsPaused).toBe(false);
+    w._toggleTTSPause();
+    expect(w._ttsPaused).toBe(true);
+    w._toggleTTSPause();
+    expect(w._ttsPaused).toBe(false);
+  });
+
+  test('TTS controls hidden after destroy', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('textToSpeech', true);
+    AccessibilityWidget.destroy();
+    // After destroy, no TTS controls should be in DOM
+    expect(document.querySelector('.a11y-widget__tts-controls')).toBeNull();
+  });
+});
+
+describe('Dev Mode Alt Text Audit', () => {
+  afterEach(() => {
+    AccessibilityWidget.destroy();
+    // Clean up any test images
+    var imgs = document.querySelectorAll('[data-test-dev-img]');
+    imgs.forEach(function(img) { img.parentNode && img.parentNode.removeChild(img); });
+  });
+
+  test('devMode: false disables audit (no badge rendered)', () => {
+    AccessibilityWidget.init({ devMode: false });
+    expect(document.querySelector('.a11y-widget__dev-badge')).toBeNull();
+  });
+
+  test('devMode: true shows dev audit badge in header', () => {
+    AccessibilityWidget.init({ devMode: true });
+    expect(document.querySelector('.a11y-widget__dev-badge')).not.toBeNull();
+  });
+
+  test('dev badge shows correct violation count for missing alt', () => {
+    var img = document.createElement('img');
+    img.src = 'test.png';
+    img.setAttribute('data-test-dev-img', '');
+    // No alt attribute
+    document.body.appendChild(img);
+
+    AccessibilityWidget.init({ devMode: true });
+    var badge = document.querySelector('.a11y-widget__dev-badge');
+    expect(badge).not.toBeNull();
+    expect(badge.textContent).toContain('1');
+  });
+
+  test('images missing alt get a11y-dev-violation class', () => {
+    var img = document.createElement('img');
+    img.src = 'test.png';
+    img.setAttribute('data-test-dev-img', '');
+    document.body.appendChild(img);
+
+    AccessibilityWidget.init({ devMode: true });
+    expect(img.classList.contains('a11y-dev-violation')).toBe(true);
+    expect(img.getAttribute('data-a11y-audit')).toBe('missing-alt');
+  });
+
+  test('images with alt do not get violation class', () => {
+    var img = document.createElement('img');
+    img.src = 'test.png';
+    img.alt = 'A test image';
+    img.setAttribute('data-test-dev-img', '');
+    document.body.appendChild(img);
+
+    AccessibilityWidget.init({ devMode: true });
+    expect(img.classList.contains('a11y-dev-violation')).toBe(false);
+  });
+
+  test('widget images are excluded from audit', () => {
+    AccessibilityWidget.init({ devMode: true });
+    // The toggle icon img inside the widget should not be flagged
+    var widgetImgs = document.querySelectorAll('.a11y-widget img');
+    widgetImgs.forEach(function(img) {
+      expect(img.classList.contains('a11y-dev-violation')).toBe(false);
+    });
+  });
+
+  test('destroy removes dev audit markers from DOM', () => {
+    var img = document.createElement('img');
+    img.src = 'test.png';
+    img.setAttribute('data-test-dev-img', '');
+    document.body.appendChild(img);
+
+    AccessibilityWidget.init({ devMode: true });
+    expect(img.classList.contains('a11y-dev-violation')).toBe(true);
+
+    AccessibilityWidget.destroy();
+    expect(img.classList.contains('a11y-dev-violation')).toBe(false);
+    expect(img.hasAttribute('data-a11y-audit')).toBe(false);
+  });
+
+  test('badge count is 0 when no violations', () => {
+    AccessibilityWidget.init({ devMode: true });
+    var badge = document.querySelector('.a11y-widget__dev-badge');
+    expect(badge.textContent).toContain('0');
+  });
+
+  test('devAuditCount is accessible on instance', () => {
+    AccessibilityWidget.init({ devMode: true });
+    var w = AccessibilityWidget.getInstance();
+    expect(typeof w._devAuditCount).toBe('number');
+    expect(w._devAuditCount).toBe(0);
+  });
+
+  // F-212: Clickable scrollable detail list
+  test('dev audit badge is a button element (F-212)', () => {
+    AccessibilityWidget.init({ devMode: true });
+    var badge = document.querySelector('.a11y-widget__dev-badge');
+    expect(badge.tagName.toLowerCase()).toBe('button');
+  });
+
+  test('dev audit badge has aria-expanded=false initially (F-212)', () => {
+    AccessibilityWidget.init({ devMode: true });
+    var badge = document.querySelector('.a11y-widget__dev-badge');
+    expect(badge.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  test('dev audit detail list exists and is hidden initially (F-212)', () => {
+    AccessibilityWidget.init({ devMode: true });
+    var list = document.querySelector('.a11y-widget__dev-audit-list');
+    expect(list).not.toBeNull();
+    expect(list.hasAttribute('hidden')).toBe(true);
+  });
+
+  test('clicking badge toggles detail list visibility (F-212)', () => {
+    AccessibilityWidget.init({ devMode: true });
+    var badge = document.querySelector('.a11y-widget__dev-badge');
+    var list = document.querySelector('.a11y-widget__dev-audit-list');
+    badge.click();
+    expect(list.hasAttribute('hidden')).toBe(false);
+    expect(badge.getAttribute('aria-expanded')).toBe('true');
+    badge.click();
+    expect(list.hasAttribute('hidden')).toBe(true);
+    expect(badge.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  test('detail list shows violations when images missing alt (F-212)', () => {
+    var img = document.createElement('img');
+    img.src = 'test.jpg';
+    document.body.appendChild(img);
+    AccessibilityWidget.init({ devMode: true });
+    var list = document.querySelector('.a11y-widget__dev-audit-list');
+    expect(list.children.length).toBeGreaterThan(0);
+    document.body.removeChild(img);
+  });
+
+  test('detail list shows empty message when no violations (F-212)', () => {
+    AccessibilityWidget.init({ devMode: true });
+    var list = document.querySelector('.a11y-widget__dev-audit-list');
+    var badge = document.querySelector('.a11y-widget__dev-badge');
+    badge.click();
+    expect(list.textContent).toContain('No');
+  });
+});
+
+// ===========================================================================
+// 40. F-106: largeCursor auto-disable on touch-only devices
+// ===========================================================================
+
+describe('F-106: largeCursor auto-disabled on touch-only', () => {
+  var origMatchMedia;
+  beforeEach(() => {
+    origMatchMedia = window.matchMedia;
+  });
+  afterEach(() => {
+    window.matchMedia = origMatchMedia;
+    AccessibilityWidget.destroy();
+  });
+
+  test('largeCursor present when hover device', () => {
+    window.matchMedia = (q) => ({ matches: q === '(hover: hover)', addListener: () => {}, removeListener: () => {} });
+    AccessibilityWidget.init();
+    expect(document.querySelector('[data-feature="largeCursor"]')).not.toBeNull();
+  });
+
+  test('largeCursor absent when touch-only device', () => {
+    window.matchMedia = (q) => ({ matches: false, addListener: () => {}, removeListener: () => {} });
+    AccessibilityWidget.init();
+    expect(document.querySelector('[data-feature="largeCursor"]')).toBeNull();
+  });
+
+  test('largeCursor shown when user forces features: { largeCursor: true } even on touch-only', () => {
+    window.matchMedia = (q) => ({ matches: false, addListener: () => {}, removeListener: () => {} });
+    AccessibilityWidget.init({ features: { largeCursor: true } });
+    expect(document.querySelector('[data-feature="largeCursor"]')).not.toBeNull();
+  });
+});
+
+// ===========================================================================
+// 41. F-107: pauseAnimations auto-activate on prefers-reduced-motion
+// ===========================================================================
+
+describe('F-107: pauseAnimations auto-activate on prefers-reduced-motion', () => {
+  var origMatchMedia;
+  beforeEach(() => {
+    origMatchMedia = window.matchMedia;
+  });
+  afterEach(() => {
+    window.matchMedia = origMatchMedia;
+    AccessibilityWidget.destroy();
+    localStorage.clear();
+  });
+
+  test('pauseAnimations defaults to false when no prefers-reduced-motion', () => {
+    window.matchMedia = (q) => ({ matches: q === '(hover: hover)', addListener: () => {}, removeListener: () => {} });
+    var w = AccessibilityWidget.init();
+    expect(w.getSettings().pauseAnimations).toBe(false);
+  });
+
+  test('pauseAnimations auto-activates when prefers-reduced-motion: reduce', () => {
+    window.matchMedia = (q) => ({ matches: q === '(prefers-reduced-motion: reduce)' || q === '(hover: hover)', addListener: () => {}, removeListener: () => {} });
+    var w = AccessibilityWidget.init();
+    expect(w.getSettings().pauseAnimations).toBe(true);
+    expect(document.body.classList.contains('a11y-pause-animations')).toBe(true);
+  });
+
+  test('saved user preference (false) overrides prefers-reduced-motion auto-activate', () => {
+    // Pre-save a false preference
+    localStorage.setItem('a11yWidgetSettings', JSON.stringify({ pauseAnimations: false }));
+    window.matchMedia = (q) => ({ matches: q === '(prefers-reduced-motion: reduce)' || q === '(hover: hover)', addListener: () => {}, removeListener: () => {} });
+    var w = AccessibilityWidget.init();
+    expect(w.getSettings().pauseAnimations).toBe(false);
+  });
+
+  test('saved user preference (true) is maintained regardless', () => {
+    localStorage.setItem('a11yWidgetSettings', JSON.stringify({ pauseAnimations: true }));
+    window.matchMedia = (q) => ({ matches: q === '(hover: hover)', addListener: () => {}, removeListener: () => {} });
+    var w = AccessibilityWidget.init();
+    expect(w.getSettings().pauseAnimations).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 42. Section 8.2: Screen reader announcements
+// ---------------------------------------------------------------------------
+
+describe('Screen Reader Announcements', () => {
+  afterEach(() => {
+    AccessibilityWidget.destroy();
+  });
+
+  test('aria-live region exists in widget root', () => {
+    AccessibilityWidget.init();
+    var el = document.querySelector('.a11y-widget__announce');
+    expect(el).not.toBeNull();
+    expect(el.getAttribute('aria-live')).toBe('polite');
+    expect(el.getAttribute('aria-atomic')).toBe('true');
+  });
+
+  test('toggle aria-label shows no count when no settings active', () => {
+    AccessibilityWidget.init();
+    var btn = document.querySelector('.a11y-widget__toggle');
+    expect(btn.getAttribute('aria-label')).not.toMatch(/\d+ settings active/);
+  });
+
+  test('toggle aria-label includes active count after enabling a feature', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('highContrast', true);
+    var btn = document.querySelector('.a11y-widget__toggle');
+    expect(btn.getAttribute('aria-label')).toMatch(/1/);
+    expect(btn.getAttribute('aria-label')).toMatch(/settings active/);
+  });
+
+  test('toggle aria-label count decrements after disabling a feature', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('highContrast', true);
+    w.setFeature('darkMode', true);
+    var btn = document.querySelector('.a11y-widget__toggle');
+    expect(btn.getAttribute('aria-label')).toMatch(/2/);
+
+    w.setFeature('highContrast', false);
+    expect(btn.getAttribute('aria-label')).toMatch(/1/);
+  });
+
+  test('toggle aria-label resets to no count after resetAll()', () => {
+    var w = AccessibilityWidget.init();
+    w.setFeature('highContrast', true);
+    w.resetAll();
+    var btn = document.querySelector('.a11y-widget__toggle');
+    expect(btn.getAttribute('aria-label')).not.toMatch(/\d+ settings active/);
+  });
+
+  test('announce region updates after resetAll()', (done) => {
+    jest.useFakeTimers();
+    var w = AccessibilityWidget.init();
+    w.setFeature('highContrast', true);
+    w.resetAll();
+    jest.advanceTimersByTime(100);
+    var el = document.querySelector('.a11y-widget__announce');
+    expect(el.textContent).toMatch(/reset/i);
+    jest.useRealTimers();
+    done();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 43. Section 8.5: First-visit tooltip
+// ---------------------------------------------------------------------------
+
+describe('First-Visit Tooltip', () => {
+  afterEach(() => {
+    AccessibilityWidget.destroy();
+  });
+
+  test('tooltip shown on first visit (no localStorage)', () => {
+    AccessibilityWidget.init();
+    expect(document.querySelector('.a11y-widget__tooltip')).not.toBeNull();
+  });
+
+  test('tooltip has role="tooltip"', () => {
+    AccessibilityWidget.init();
+    var tip = document.querySelector('.a11y-widget__tooltip');
+    expect(tip.getAttribute('role')).toBe('tooltip');
+  });
+
+  test('toggle button gets aria-describedby while tooltip visible', () => {
+    AccessibilityWidget.init();
+    var btn = document.querySelector('.a11y-widget__toggle');
+    expect(btn.getAttribute('aria-describedby')).toBe('a11y-widget-tooltip');
+  });
+
+  test('tooltip NOT shown when showTooltip: false', () => {
+    AccessibilityWidget.init({ showTooltip: false });
+    expect(document.querySelector('.a11y-widget__tooltip')).toBeNull();
+  });
+
+  test('tooltip NOT shown when settings exist in localStorage', () => {
+    localStorage.setItem('a11yWidgetSettings', JSON.stringify({ highContrast: true }));
+    AccessibilityWidget.init();
+    expect(document.querySelector('.a11y-widget__tooltip')).toBeNull();
+  });
+
+  test('tooltip text is non-empty', () => {
+    AccessibilityWidget.init();
+    var tip = document.querySelector('.a11y-widget__tooltip');
+    expect(tip.textContent.length).toBeGreaterThan(5);
+  });
+
+  test('_dismissTooltip() removes tooltipEl reference', () => {
+    var w = AccessibilityWidget.init();
+    expect(w._tooltipEl).not.toBeNull();
+    w._dismissTooltip();
+    expect(w._tooltipEl).toBeNull();
+  });
+
+  test('_dismissTooltip() removes aria-describedby from toggle', () => {
+    var w = AccessibilityWidget.init();
+    w._dismissTooltip();
+    var btn = document.querySelector('.a11y-widget__toggle');
+    expect(btn.hasAttribute('aria-describedby')).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 44. F-103 Layer 1: Quick Start built-in presets
+// ---------------------------------------------------------------------------
+
+describe('F-103: Quick Start built-in presets', () => {
+  afterEach(() => {
+    AccessibilityWidget.destroy();
+  });
+
+  // ── Section rendering ────────────────────────────────────────────────────
+
+  test('renders .a11y-widget__quick-start section by default', () => {
+    AccessibilityWidget.init();
+    expect(document.querySelector('.a11y-widget__quick-start')).not.toBeNull();
+  });
+
+  test('renders 5 preset buttons', () => {
+    AccessibilityWidget.init();
+    var btns = document.querySelectorAll('.a11y-widget__preset-btn');
+    expect(btns.length).toBe(5);
+  });
+
+  test('preset buttons have data-preset-id attributes', () => {
+    AccessibilityWidget.init();
+    var ids = Array.from(document.querySelectorAll('.a11y-widget__preset-btn'))
+      .map(btn => btn.getAttribute('data-preset-id'));
+    expect(ids).toEqual(['low-vision', 'dyslexia', 'adhd', 'motor', 'migraine']);
+  });
+
+  test('preset buttons have English labels by default', () => {
+    AccessibilityWidget.init();
+    var btns = document.querySelectorAll('.a11y-widget__preset-btn');
+    expect(btns[0].textContent).toBeTruthy(); // Low Vision label
+    expect(btns[1].textContent).toBeTruthy(); // Dyslexia label
+  });
+
+  test('showPresets: false hides the section', () => {
+    AccessibilityWidget.init({ showPresets: false });
+    expect(document.querySelector('.a11y-widget__quick-start')).toBeNull();
+  });
+
+  // ── Preset application ───────────────────────────────────────────────────
+
+  test('clicking Low Vision preset enables highContrast', () => {
+    var w = AccessibilityWidget.init();
+    var btn = document.querySelector('[data-preset-id="low-vision"]');
+    btn.click();
+    expect(w.getSettings().highContrast).toBe(true);
+  });
+
+  test('clicking Low Vision preset sets fontSize to 3', () => {
+    var w = AccessibilityWidget.init();
+    var btn = document.querySelector('[data-preset-id="low-vision"]');
+    btn.click();
+    expect(w.getSettings().fontSize).toBe(3);
+  });
+
+  test('clicking Low Vision preset enables underlineLinks', () => {
+    var w = AccessibilityWidget.init();
+    var btn = document.querySelector('[data-preset-id="low-vision"]');
+    btn.click();
+    expect(w.getSettings().underlineLinks).toBe(true);
+  });
+
+  test('clicking Dyslexia preset enables dyslexiaFont', () => {
+    var w = AccessibilityWidget.init();
+    var btn = document.querySelector('[data-preset-id="dyslexia"]');
+    btn.click();
+    expect(w.getSettings().dyslexiaFont).toBe(true);
+  });
+
+  test('clicking Dyslexia preset sets lineHeight to 3', () => {
+    var w = AccessibilityWidget.init();
+    var btn = document.querySelector('[data-preset-id="dyslexia"]');
+    btn.click();
+    expect(w.getSettings().lineHeight).toBe(3);
+  });
+
+  test('clicking ADHD preset enables pauseAnimations', () => {
+    var w = AccessibilityWidget.init();
+    var btn = document.querySelector('[data-preset-id="adhd"]');
+    btn.click();
+    expect(w.getSettings().pauseAnimations).toBe(true);
+  });
+
+  test('clicking ADHD preset enables focusMode', () => {
+    var w = AccessibilityWidget.init();
+    var btn = document.querySelector('[data-preset-id="adhd"]');
+    btn.click();
+    expect(w.getSettings().focusMode).toBe(true);
+  });
+
+  test('clicking Motor preset enables focusOutline', () => {
+    var w = AccessibilityWidget.init();
+    var btn = document.querySelector('[data-preset-id="motor"]');
+    btn.click();
+    expect(w.getSettings().focusOutline).toBe(true);
+  });
+
+  test('clicking Migraine Safe preset enables darkMode', () => {
+    var w = AccessibilityWidget.init();
+    var btn = document.querySelector('[data-preset-id="migraine"]');
+    btn.click();
+    expect(w.getSettings().darkMode).toBe(true);
+  });
+
+  test('clicking Migraine Safe preset enables pauseAnimations', () => {
+    var w = AccessibilityWidget.init();
+    var btn = document.querySelector('[data-preset-id="migraine"]');
+    btn.click();
+    expect(w.getSettings().pauseAnimations).toBe(true);
+  });
+
+  // ── Reset before applying ────────────────────────────────────────────────
+
+  test('preset click first resets previous settings', () => {
+    var w = AccessibilityWidget.init();
+    // Activate something not in the Low Vision preset
+    w.setFeature('dyslexiaFont', true);
+    expect(w.getSettings().dyslexiaFont).toBe(true);
+
+    // Apply Low Vision preset — dyslexiaFont should be cleared
+    document.querySelector('[data-preset-id="low-vision"]').click();
+    expect(w.getSettings().dyslexiaFont).toBe(false);
+    expect(w.getSettings().highContrast).toBe(true);
+  });
+
+  test('applying one preset then another replaces settings cleanly', () => {
+    var w = AccessibilityWidget.init();
+    document.querySelector('[data-preset-id="migraine"]').click();
+    expect(w.getSettings().darkMode).toBe(true);
+
+    document.querySelector('[data-preset-id="motor"]').click();
+    // darkMode should be reset; motor preset does not include it
+    expect(w.getSettings().darkMode).toBe(false);
+    expect(w.getSettings().focusOutline).toBe(true);
+  });
+
+  // ── i18n update ──────────────────────────────────────────────────────────
+
+  test('preset button labels update when language changes', () => {
+    var w = AccessibilityWidget.init({ defaultLanguage: 'en' });
+    var btn = document.querySelector('[data-preset-id="low-vision"]');
+    var enLabel = btn.textContent;
+
+    w.setLanguage('he');
+    // Hebrew label should differ from English
+    expect(btn.textContent).not.toBe(enLabel);
+  });
+
+  // ── destroy cleanup ──────────────────────────────────────────────────────
+
+  test('presets section removed from DOM after destroy()', () => {
+    AccessibilityWidget.init();
+    expect(document.querySelector('.a11y-widget__quick-start')).not.toBeNull();
+    AccessibilityWidget.destroy();
+    expect(document.querySelector('.a11y-widget__quick-start')).toBeNull();
+  });
+});
+
+// ===========================================================================
+// createWidget() factory API (Section 7.5 — multi-instance support)
+// ===========================================================================
+
+describe('createWidget() factory API', () => {
+  var _extra = [];
+
+  afterEach(() => {
+    // Destroy any instances created by this describe block
+    _extra.forEach(function (w) { try { w.destroy(); } catch (_) {} });
+    _extra = [];
+    AccessibilityWidget.destroy();
+  });
+
+  test('createWidget() returns a widget instance', () => {
+    var w = AccessibilityWidget.createWidget({ storageKey: 'cw1' });
+    _extra.push(w);
+    expect(w).not.toBeNull();
+    expect(typeof w.openMenu).toBe('function');
+    expect(typeof w.getSettings).toBe('function');
+    expect(typeof w.destroy).toBe('function');
+  });
+
+  test('createWidget() does not affect the singleton', () => {
+    expect(AccessibilityWidget.getInstance()).toBeNull();
+    var w = AccessibilityWidget.createWidget({ storageKey: 'cw2' });
+    _extra.push(w);
+    // getInstance() is still null — createWidget() does not register the singleton
+    expect(AccessibilityWidget.getInstance()).toBeNull();
+  });
+
+  test('createWidget() does not destroy an existing singleton', () => {
+    var singleton = AccessibilityWidget.init({ storageKey: 'cwSingleton' });
+    var extra = AccessibilityWidget.createWidget({ storageKey: 'cwExtra' });
+    _extra.push(extra);
+    // Singleton must still be alive
+    expect(AccessibilityWidget.getInstance()).toBe(singleton);
+    expect(document.querySelectorAll('.a11y-widget')).toHaveLength(2);
+  });
+
+  test('multiple independent instances can coexist', () => {
+    var w1 = AccessibilityWidget.createWidget({ storageKey: 'cwA', position: 'top-left' });
+    var w2 = AccessibilityWidget.createWidget({ storageKey: 'cwB', position: 'bottom-left' });
+    _extra.push(w1, w2);
+    expect(w1).not.toBe(w2);
+    expect(document.querySelectorAll('.a11y-widget')).toHaveLength(2);
+  });
+
+  test('instance returned by createWidget() is independently operable', () => {
+    var w = AccessibilityWidget.createWidget({ storageKey: 'cwOp' });
+    _extra.push(w);
+    w.setFeature('highContrast', true);
+    expect(w.getSettings().highContrast).toBe(true);
+  });
+
+  test('destroying a createWidget() instance removes only its DOM node', () => {
+    var singleton = AccessibilityWidget.init({ storageKey: 'cwDest1' });
+    var extra = AccessibilityWidget.createWidget({ storageKey: 'cwDest2' });
+    extra.destroy();
+    // Singleton widget still in DOM
+    expect(document.querySelectorAll('.a11y-widget')).toHaveLength(1);
+    expect(AccessibilityWidget.getInstance()).toBe(singleton);
+  });
+
+  test('createWidget() returns a fresh instance on each call', () => {
+    var w1 = AccessibilityWidget.createWidget({ storageKey: 'cwFresh1' });
+    var w2 = AccessibilityWidget.createWidget({ storageKey: 'cwFresh2' });
+    _extra.push(w1, w2);
+    expect(w1).not.toBe(w2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F-003: Plugin Architecture
+// ---------------------------------------------------------------------------
+
+describe('F-003: Plugin Architecture', () => {
+  // Helper to build a minimal valid test plugin
+  function makePlugin(id, featureId, overrides) {
+    return Object.assign({
+      id: id,
+      group: 'visual',
+      features: [
+        { id: featureId, type: 'toggle', cssClass: 'a11y-' + featureId, default: false, group: 'visual', icon: '' },
+      ],
+      activate: jest.fn(),
+      deactivate: jest.fn(),
+    }, overrides || {});
+  }
+
+  afterEach(() => {
+    AccessibilityWidget.destroy();
+    // Clean plugin registry between tests
+    AccessibilityWidget._clearPlugins();
+  });
+
+  describe('registerPlugin()', () => {
+    test('registerPlugin is a function on AccessibilityWidget', () => {
+      expect(typeof AccessibilityWidget.registerPlugin).toBe('function');
+    });
+
+    test('throws TypeError when plugin has no id', () => {
+      expect(() => AccessibilityWidget.registerPlugin({ features: [] })).toThrow(TypeError);
+    });
+
+    test('throws TypeError when plugin.features is not an array', () => {
+      expect(() => AccessibilityWidget.registerPlugin({ id: 'x', features: null })).toThrow(TypeError);
+    });
+
+    test('does not throw for a valid minimal plugin', () => {
+      expect(() => AccessibilityWidget.registerPlugin(makePlugin('p1', 'pluginToggle1'))).not.toThrow();
+    });
+
+    test('registered plugin features appear in getAvailableFeatures() without an instance', () => {
+      var plugin = makePlugin('p2', 'pluginToggle2');
+      AccessibilityWidget.registerPlugin(plugin);
+      var ids = AccessibilityWidget.getAvailableFeatures().map(function (f) { return f.id; });
+      expect(ids).toContain('pluginToggle2');
+    });
+
+    test('registered plugin features appear in widget panel after init()', () => {
+      var plugin = makePlugin('p3', 'pluginToggle3');
+      AccessibilityWidget.registerPlugin(plugin);
+      AccessibilityWidget.init();
+      expect(document.querySelector('[data-feature="pluginToggle3"]')).not.toBeNull();
+    });
+
+    test('plugin activate() is called when its feature is toggled on', () => {
+      var plugin = makePlugin('p4', 'pluginToggle4');
+      AccessibilityWidget.registerPlugin(plugin);
+      AccessibilityWidget.init();
+      var item = document.querySelector('[data-feature="pluginToggle4"]');
+      item.click();
+      expect(plugin.activate).toHaveBeenCalledWith('pluginToggle4', true, expect.any(Object));
+    });
+
+    test('plugin deactivate() is called when its feature is toggled off', () => {
+      var plugin = makePlugin('p5', 'pluginToggle5');
+      AccessibilityWidget.registerPlugin(plugin);
+      AccessibilityWidget.init();
+      var w = AccessibilityWidget.getInstance();
+      w.setFeature('pluginToggle5', true);
+      plugin.activate.mockClear();
+      w.setFeature('pluginToggle5', false);
+      expect(plugin.deactivate).toHaveBeenCalledWith('pluginToggle5', expect.any(Object));
+    });
+
+    test('plugin deactivate() is called on resetAll()', () => {
+      var plugin = makePlugin('p6', 'pluginToggle6');
+      AccessibilityWidget.registerPlugin(plugin);
+      AccessibilityWidget.init();
+      var w = AccessibilityWidget.getInstance();
+      w.setFeature('pluginToggle6', true);
+      plugin.deactivate.mockClear();
+      w.resetAll();
+      expect(plugin.deactivate).toHaveBeenCalled();
+    });
+
+    test('plugin deactivate() is called on destroy()', () => {
+      var plugin = makePlugin('p7', 'pluginToggle7');
+      AccessibilityWidget.registerPlugin(plugin);
+      AccessibilityWidget.init();
+      var w = AccessibilityWidget.getInstance();
+      w.setFeature('pluginToggle7', true);
+      plugin.deactivate.mockClear();
+      AccessibilityWidget.destroy();
+      expect(plugin.deactivate).toHaveBeenCalled();
+    });
+
+    test('plugin mount() is called after widget DOM is built', () => {
+      var mountSpy = jest.fn();
+      var plugin = makePlugin('p8', 'pluginToggle8', { mount: mountSpy });
+      AccessibilityWidget.registerPlugin(plugin);
+      AccessibilityWidget.init();
+      expect(mountSpy).toHaveBeenCalledWith(expect.any(HTMLElement), expect.any(Object));
+    });
+
+    test('plugin unmount() is called on destroy()', () => {
+      var unmountSpy = jest.fn();
+      var plugin = makePlugin('p9', 'pluginToggle9', { unmount: unmountSpy });
+      AccessibilityWidget.registerPlugin(plugin);
+      AccessibilityWidget.init();
+      AccessibilityWidget.destroy();
+      expect(unmountSpy).toHaveBeenCalled();
+    });
+
+    test('plugin feature can be disabled via features option', () => {
+      var plugin = makePlugin('p10', 'pluginToggleA');
+      AccessibilityWidget.registerPlugin(plugin);
+      AccessibilityWidget.init({ features: { pluginToggleA: false } });
+      expect(document.querySelector('[data-feature="pluginToggleA"]')).toBeNull();
+    });
+
+    test('plugin features do not affect built-in feature behaviour', () => {
+      var plugin = makePlugin('p11', 'pluginToggleB');
+      AccessibilityWidget.registerPlugin(plugin);
+      AccessibilityWidget.init();
+      var w = AccessibilityWidget.getInstance();
+      w.setFeature('darkMode', true);
+      expect(document.body.classList.contains('a11y-dark-mode')).toBe(true);
+    });
+  });
+
+  describe('getAvailableFeatures()', () => {
+    test('getAvailableFeatures is a function on AccessibilityWidget', () => {
+      expect(typeof AccessibilityWidget.getAvailableFeatures).toBe('function');
+    });
+
+    test('returns array of feature definitions without active instance', () => {
+      var feats = AccessibilityWidget.getAvailableFeatures();
+      expect(Array.isArray(feats)).toBe(true);
+      expect(feats.length).toBeGreaterThanOrEqual(28);
+    });
+
+    test('returned features include built-in feature ids', () => {
+      var ids = AccessibilityWidget.getAvailableFeatures().map(function (f) { return f.id; });
+      expect(ids).toContain('highContrast');
+      expect(ids).toContain('textToSpeech');
+      expect(ids).toContain('readingGuide');
+    });
+
+    test('delegates to instance getAvailableFeatures() when active', () => {
+      AccessibilityWidget.init();
+      var feats = AccessibilityWidget.getAvailableFeatures();
+      expect(Array.isArray(feats)).toBe(true);
+      expect(feats.length).toBeGreaterThanOrEqual(28);
+    });
+
+    test('instance getAvailableFeatures() includes plugin features', () => {
+      var plugin = makePlugin('p12', 'pluginToggleC');
+      AccessibilityWidget.registerPlugin(plugin);
+      AccessibilityWidget.init();
+      var ids = AccessibilityWidget.getAvailableFeatures().map(function (f) { return f.id; });
+      expect(ids).toContain('pluginToggleC');
+    });
   });
 });

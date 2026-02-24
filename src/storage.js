@@ -1,26 +1,132 @@
 /**
  * LocalStorage persistence module for the Accessibility Widget.
  *
- * Provides a thin wrapper around `localStorage` to save, load, and clear
- * user accessibility settings.  All operations are guarded with try/catch
- * so that environments where storage is unavailable (private browsing,
- * storage quota exceeded, SSR) degrade gracefully.
+ * Provides a thin wrapper around a swappable storage backend to save, load,
+ * and clear user accessibility settings.  The default backend is
+ * `localStorage`.  Alternative backends are configured via
+ * {@link setStorageMode} before calling `AccessibilityWidget.init()`:
+ *
+ * ```js
+ * import { setStorageMode } from './storage.js';
+ *
+ * // Use sessionStorage instead:
+ * setStorageMode('sessionStorage');
+ *
+ * // Disable persistence entirely:
+ * setStorageMode('none');
+ *
+ * // Bring-your-own storage provider:
+ * setStorageMode({
+ *   getItem: (key) => myDB.get(key),
+ *   setItem: (key, value) => myDB.set(key, value),
+ *   removeItem: (key) => myDB.delete(key),
+ * });
+ * ```
+ *
+ * All operations are guarded with try/catch so that environments where
+ * storage is unavailable (private browsing, storage quota exceeded, SSR)
+ * degrade gracefully.
  *
  * @module storage
  */
 
 // ---------------------------------------------------------------------------
-// Default storage key
+// No-op provider (used when storage mode is 'none')
+// ---------------------------------------------------------------------------
+
+const NO_OP_PROVIDER = {
+  getItem() { return null; },
+  setItem() {},
+  removeItem() {},
+};
+
+// ---------------------------------------------------------------------------
+// Module state
 // ---------------------------------------------------------------------------
 
 /**
- * The default key used to persist settings in localStorage.
+ * The default key used to persist settings.
  * @type {string}
  */
 let STORAGE_KEY = 'a11yWidgetSettings';
 
+/**
+ * The active storage provider.
+ * Defaults to `localStorage`; falls back to no-op if unavailable (SSR).
+ * @type {{ getItem: Function, setItem: Function, removeItem: Function }}
+ */
+let _provider = _resolveBuiltIn('localStorage');
+
 // ---------------------------------------------------------------------------
-// Public API
+// Internal: resolve a named built-in
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {'localStorage'|'sessionStorage'} name
+ * @returns {{ getItem, setItem, removeItem }}
+ */
+function _resolveBuiltIn(name) {
+  try {
+    if (typeof window !== 'undefined' && window[name]) {
+      return window[name];
+    }
+  } catch (_e) { /* SSR or restricted */ }
+  return NO_OP_PROVIDER;
+}
+
+// ---------------------------------------------------------------------------
+// Public: configure storage mode
+// ---------------------------------------------------------------------------
+
+/**
+ * Set the storage backend used by all subsequent save/load/clear operations.
+ *
+ * Accepted values:
+ * - `'localStorage'` *(default)* — browser `localStorage`
+ * - `'sessionStorage'` — browser `sessionStorage` (cleared when tab closes)
+ * - `'none'` — disables persistence; settings live only in memory
+ * - `object` — a custom provider implementing
+ *   `{ getItem(key): string|null, setItem(key, value): void, removeItem(key): void }`
+ *
+ * Must be called **before** `AccessibilityWidget.init()` to take effect.
+ *
+ * @param {'localStorage'|'sessionStorage'|'none'|Object} mode
+ * @throws {Error} If `mode` is an unrecognised string or an invalid object.
+ */
+export function setStorageMode(mode) {
+  if (mode === 'localStorage') {
+    _provider = _resolveBuiltIn('localStorage');
+  } else if (mode === 'sessionStorage') {
+    _provider = _resolveBuiltIn('sessionStorage');
+  } else if (mode === 'none') {
+    _provider = NO_OP_PROVIDER;
+  } else if (
+    mode !== null &&
+    typeof mode === 'object' &&
+    typeof mode.getItem === 'function' &&
+    typeof mode.setItem === 'function' &&
+    typeof mode.removeItem === 'function'
+  ) {
+    _provider = mode;
+  } else {
+    throw new Error(
+      'Invalid storage mode. Expected "localStorage", "sessionStorage", "none", ' +
+      'or an object with getItem / setItem / removeItem methods.'
+    );
+  }
+}
+
+/**
+ * Return the currently active storage provider object.
+ *
+ * @returns {{ getItem: Function, setItem: Function, removeItem: Function }}
+ */
+export function getStorageMode() {
+  return _provider;
+}
+
+// ---------------------------------------------------------------------------
+// Storage key management
 // ---------------------------------------------------------------------------
 
 /**
@@ -47,25 +153,29 @@ export function getStorageKey() {
   return STORAGE_KEY;
 }
 
+// ---------------------------------------------------------------------------
+// Settings persistence
+// ---------------------------------------------------------------------------
+
 /**
- * Persist the supplied settings object to localStorage.
+ * Persist the supplied settings object to the active storage backend.
  *
- * The object is serialised as JSON.  If localStorage is unavailable or
- * the write fails (e.g. quota exceeded) the error is silently swallowed
- * so that the widget continues to function normally.
+ * The object is serialised as JSON.  If the backend is unavailable or the
+ * write fails the error is silently swallowed so the widget continues
+ * to function normally.
  *
  * @param {Record<string, *>} settings - Plain object of feature settings.
  */
 export function saveSettings(settings) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    _provider.setItem(STORAGE_KEY, JSON.stringify(settings));
   } catch (_err) {
     // Storage unavailable or quota exceeded -- fail silently.
   }
 }
 
 /**
- * Load and return previously saved settings from localStorage.
+ * Load and return previously saved settings from the active backend.
  *
  * Returns `null` when no settings exist or when the stored value cannot
  * be parsed as valid JSON.
@@ -74,7 +184,7 @@ export function saveSettings(settings) {
  */
 export function loadSettings() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = _provider.getItem(STORAGE_KEY);
     if (raw === null) {
       return null;
     }
@@ -86,11 +196,11 @@ export function loadSettings() {
 }
 
 /**
- * Remove the settings entry from localStorage.
+ * Remove the settings entry from the active storage backend.
  */
 export function clearSettings() {
   try {
-    localStorage.removeItem(STORAGE_KEY);
+    _provider.removeItem(STORAGE_KEY);
   } catch (_err) {
     // Storage unavailable -- fail silently.
   }
@@ -101,31 +211,31 @@ export function clearSettings() {
 // ---------------------------------------------------------------------------
 
 /**
- * Persist a profiles map to localStorage under the given key.
+ * Persist a profiles map to the active backend under the given key.
  *
  * @param {Record<string, Record<string, *>>} profiles - Map of name → settings.
- * @param {string} key - The localStorage key to write to.
+ * @param {string} key - The storage key to write to.
  */
 export function saveProfiles(profiles, key) {
   try {
-    localStorage.setItem(key, JSON.stringify(profiles));
+    _provider.setItem(key, JSON.stringify(profiles));
   } catch (_err) {
     // Storage unavailable or quota exceeded -- fail silently.
   }
 }
 
 /**
- * Load a profiles map from localStorage.
+ * Load a profiles map from the active backend.
  *
  * Returns `null` when no entry exists or when the stored value cannot be
  * parsed as a valid JSON object.
  *
- * @param {string} key - The localStorage key to read from.
+ * @param {string} key - The storage key to read from.
  * @returns {Record<string, Record<string, *>>|null}
  */
 export function loadProfiles(key) {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = _provider.getItem(key);
     if (raw === null) {
       return null;
     }
@@ -140,13 +250,13 @@ export function loadProfiles(key) {
 }
 
 /**
- * Remove the profiles entry from localStorage.
+ * Remove the profiles entry from the active backend.
  *
- * @param {string} key - The localStorage key to remove.
+ * @param {string} key - The storage key to remove.
  */
 export function clearProfiles(key) {
   try {
-    localStorage.removeItem(key);
+    _provider.removeItem(key);
   } catch (_err) {
     // Storage unavailable -- fail silently.
   }

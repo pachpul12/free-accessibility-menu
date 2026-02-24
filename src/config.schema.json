@@ -1,0 +1,192 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/pachpul12/free-accessibility-menu/blob/main/src/config.schema.json",
+  "title": "AccessibilityWidget WidgetOptions",
+  "description": "Configuration options accepted by AccessibilityWidget.init() and AccessibilityWidget.createWidget().",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "defaultLanguage": {
+      "type": "string",
+      "description": "BCP-47 language code for the initial UI language. Built-in languages include 'en', 'he', 'ar', 'zh', 'es', 'fr', 'de', 'ja', 'ru', 'pt' and 36 more. Additional locales can be registered via registerLanguage().",
+      "default": "en",
+      "examples": ["en", "he", "ar", "zh", "es", "fr", "de", "ja", "ru", "pt"]
+    },
+    "features": {
+      "type": "object",
+      "description": "Fine-grained feature enable/disable map. Keys are feature IDs; set a value to false to hide that feature from the widget UI. Omit the map to enable all features.",
+      "additionalProperties": false,
+      "properties": {
+        "highContrast":         { "type": "boolean" },
+        "darkMode":             { "type": "boolean" },
+        "fontSize":             { "type": "boolean" },
+        "pauseAnimations":      { "type": "boolean" },
+        "invertColors":         { "type": "boolean" },
+        "deuteranopia":         { "type": "boolean" },
+        "protanopia":           { "type": "boolean" },
+        "tritanopia":           { "type": "boolean" },
+        "reducedTransparency":  { "type": "boolean" },
+        "dyslexiaFont":         { "type": "boolean" },
+        "underlineLinks":       { "type": "boolean" },
+        "hideImages":           { "type": "boolean" },
+        "textSpacing":          { "type": "boolean" },
+        "highlightHeadings":    { "type": "boolean" },
+        "focusMode":            { "type": "boolean" },
+        "lineHeight":           { "type": "boolean" },
+        "letterSpacing":        { "type": "boolean" },
+        "wordSpacing":          { "type": "boolean" },
+        "sensoryFriendly":      { "type": "boolean" },
+        "readableFont":         { "type": "boolean" },
+        "saturation":           { "type": "boolean" },
+        "brightness":           { "type": "boolean" },
+        "suppressNotifications": { "type": "boolean" },
+        "highlightHover":       { "type": "boolean" },
+        "focusOutline":         { "type": "boolean" },
+        "largeCursor":          { "type": "boolean" },
+        "readingGuide":         { "type": "boolean" },
+        "textToSpeech":         { "type": "boolean" }
+      }
+    },
+    "storageKey": {
+      "type": "string",
+      "description": "Custom localStorage key for persisting user preferences. Useful when multiple widgets must coexist on the same origin with separate state.",
+      "default": "a11yWidgetSettings",
+      "examples": ["a11yWidgetSettings", "myAppA11y", "headerA11y"]
+    },
+    "storage": {
+      "description": "Storage backend for user preferences. Use 'localStorage' (default), 'sessionStorage', 'none' (in-memory, no persistence), or a custom provider object implementing { getItem, setItem, removeItem }.",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": ["localStorage", "sessionStorage", "none"],
+          "description": "Built-in storage mode."
+        },
+        {
+          "type": "object",
+          "description": "Custom storage provider.",
+          "required": ["getItem", "setItem", "removeItem"],
+          "additionalProperties": false,
+          "properties": {
+            "getItem":    { "type": "string", "description": "Name of the getItem method (runtime function reference)." },
+            "setItem":    { "type": "string", "description": "Name of the setItem method (runtime function reference)." },
+            "removeItem": { "type": "string", "description": "Name of the removeItem method (runtime function reference)." }
+          }
+        }
+      ],
+      "default": "localStorage"
+    },
+    "position": {
+      "type": "string",
+      "enum": ["bottom-right", "bottom-left", "top-right", "top-left"],
+      "description": "Corner of the viewport where the toggle button is placed. Automatically mirrors to the opposite horizontal side in RTL languages.",
+      "default": "bottom-right"
+    },
+    "keyboardShortcut": {
+      "type": "string",
+      "description": "Keyboard shortcut string that opens the widget. Parsed as a combination of modifier keys plus one character, e.g. 'Alt+A', 'Ctrl+Shift+A'. Set to an empty string to disable.",
+      "default": "Alt+A",
+      "examples": ["Alt+A", "Ctrl+Shift+A", ""]
+    },
+    "toggleIconUrl": {
+      "type": "string",
+      "description": "URL or data URI of the toggle button image in its default state. Provide an absolute URL or a CSP-safe path when Content-Security-Policy restricts inline data URIs.",
+      "format": "uri-reference",
+      "examples": ["/icons/a11y.svg", "data:image/svg+xml,..."]
+    },
+    "toggleIconHoverUrl": {
+      "type": "string",
+      "description": "URL or data URI of the toggle button image on hover. Falls back to the built-in default when omitted.",
+      "format": "uri-reference"
+    },
+    "accessibilityStatementUrl": {
+      "type": "string",
+      "description": "URL of the site's accessibility statement page. When provided, a labelled link is rendered in the widget footer that opens the page in a new tab.",
+      "format": "uri-reference",
+      "examples": ["/accessibility-statement", "https://example.com/a11y"]
+    },
+    "showLanguageSwitcher": {
+      "type": "boolean",
+      "description": "When false, the language selector section is not rendered in the DOM.",
+      "default": true
+    },
+    "showPresets": {
+      "type": "boolean",
+      "description": "When false, the Quick Start presets chip-buttons (Low Vision, Dyslexia Friendly, ADHD/Cognitive, Motor/Keyboard, Migraine Safe) are not rendered.",
+      "default": true
+    },
+    "showTooltip": {
+      "type": "boolean",
+      "description": "When true, a tooltip is shown near the toggle button on the user's first visit (no saved settings). Auto-dismisses after 5 seconds. Respects prefers-reduced-motion.",
+      "default": true
+    },
+    "showZoomLockWarning": {
+      "type": "boolean",
+      "description": "When true, a non-blocking notice is shown in the panel if the viewport meta tag contains user-scalable=no or maximum-scale < 5.",
+      "default": true
+    },
+    "primaryColor": {
+      "type": "string",
+      "description": "Override the widget's primary accent color. Accepts any CSS color value (hex, rgb, hsl).",
+      "examples": ["#005fcc", "rgb(0, 95, 204)"]
+    },
+    "panelTitle": {
+      "type": "string",
+      "description": "Custom text for the panel header and the toggle button aria-label. Defaults to the translated 'Accessibility Menu' string for the active language.",
+      "examples": ["Accessibility Options", "Accessibility Tools"]
+    },
+    "disclaimerText": {
+      "description": "Custom disclaimer text rendered in the panel footer, false to suppress the disclaimer entirely, or omit for the default translated disclaimer.",
+      "oneOf": [
+        { "type": "string" },
+        { "type": "boolean", "enum": [false] }
+      ]
+    },
+    "notificationSuppressorSelectors": {
+      "type": "array",
+      "description": "Additional CSS selectors to hide when suppressNotifications is enabled. Merged with the built-in selector list.",
+      "items": { "type": "string" },
+      "examples": [["#my-chat-widget", ".custom-toast"]]
+    },
+    "devMode": {
+      "type": "boolean",
+      "description": "Enable development mode. Activates alt-text audit on init, logs violations to the console, and enables other developer-facing warnings. Auto-detected from NODE_ENV=development when omitted.",
+      "default": false
+    },
+    "onToggle": {
+      "description": "Callback invoked synchronously whenever a feature value changes. Receives (featureId: string, newValue: boolean | number). Prefer the a11y:toggle CustomEvent for decoupled integrations.",
+      "type": "string",
+      "examples": ["function(featureId, value) { console.log(featureId, value); }"]
+    },
+    "onOpenMenu": {
+      "description": "Callback invoked when the menu panel opens. Prefer the a11y:open CustomEvent for decoupled integrations.",
+      "type": "string"
+    },
+    "onCloseMenu": {
+      "description": "Callback invoked when the menu panel closes. Prefer the a11y:close CustomEvent for decoupled integrations.",
+      "type": "string"
+    }
+  },
+  "examples": [
+    {
+      "defaultLanguage": "en",
+      "position": "bottom-right",
+      "storageKey": "a11yWidgetSettings"
+    },
+    {
+      "defaultLanguage": "he",
+      "position": "bottom-left",
+      "accessibilityStatementUrl": "/accessibility-statement",
+      "features": {
+        "textToSpeech": false,
+        "readingGuide": false
+      }
+    },
+    {
+      "primaryColor": "#005fcc",
+      "showPresets": true,
+      "showLanguageSwitcher": true,
+      "showTooltip": false,
+      "keyboardShortcut": "Alt+A"
+    }
+  ]
+}
