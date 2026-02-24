@@ -1,4 +1,5 @@
-# Free Accessibility Menu
+# Free Accessibility Menu™
+Trademark: “Free Accessibility Menu™” is a trademark of Advertease Technologies LTD. See TRADEMARK.md.
 
 A free, lightweight, client-side accessibility menu widget.
 
@@ -609,3 +610,13 @@ Tested on modern versions of Chrome, Firefox, Edge, and Safari. The widget uses 
 ## License
 
 [MIT](LICENSE)
+
+## Trademark Notice
+
+"Free Accessibility Menu" and associated logos are trademarks of Advertease Technologies LTD.
+
+The MIT License applies to the source code only.
+
+No rights are granted to use the project name, logo, or branding as part of a product name, commercial offering, or competing service without prior written permission from Advertease Technologies LTD.
+
+Fair use, including accurate attribution or reference to this project, is permitted.

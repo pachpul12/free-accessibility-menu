@@ -2850,6 +2850,138 @@ describe('Position Switcher', () => {
     expect(heLabel).not.toBe(enLabel);
     expect(heLabel.length).toBeGreaterThan(0);
   });
+
+  // ── RTL column layout (regression: clicking visual-right button in Hebrew mode
+  //    must float the widget to the RIGHT side of the page, not the left) ─────
+
+  test('position grid has dir="ltr" in Hebrew (RTL) mode to prevent visual column reversal', () => {
+    var w = AccessibilityWidget.init({ defaultLanguage: 'he' });
+    var grid = document.querySelector('.a11y-widget__position-grid');
+    expect(grid.getAttribute('dir')).toBe('ltr');
+    w.destroy();
+  });
+
+  test('position grid retains dir="ltr" after switching to Hebrew via setLanguage', () => {
+    var w = AccessibilityWidget.init();
+    w.setLanguage('he');
+    var grid = document.querySelector('.a11y-widget__position-grid');
+    expect(grid.getAttribute('dir')).toBe('ltr');
+    w.destroy();
+  });
+
+  test('clicking top-right button in Hebrew mode sets data-position="top-right" (not top-left)', () => {
+    var w = AccessibilityWidget.init({ defaultLanguage: 'he' });
+    var btn = document.querySelector('.a11y-widget__position-btn[data-pos="top-right"]');
+    simulateClick(btn);
+    var root = document.querySelector('.a11y-widget');
+    // Bug would manifest as data-position="top-left" because the RTL-reversed
+    // grid puts the top-left button in the visual-right column.
+    expect(root.getAttribute('data-position')).toBe('top-right');
+    w.destroy();
+  });
+
+  test('clicking bottom-right button in Hebrew mode sets data-position="bottom-right" (not bottom-left)', () => {
+    var w = AccessibilityWidget.init({ defaultLanguage: 'he' });
+    var btn = document.querySelector('.a11y-widget__position-btn[data-pos="bottom-right"]');
+    simulateClick(btn);
+    var root = document.querySelector('.a11y-widget');
+    expect(root.getAttribute('data-position')).toBe('bottom-right');
+    w.destroy();
+  });
+
+  test('right-column buttons (index 1 and 3) map to right-side positions in Hebrew mode', () => {
+    // Ensures the DOM order top-left / top-right / bottom-left / bottom-right is
+    // preserved (not reversed) so the 2nd and 4th buttons are always the RIGHT
+    // column regardless of language direction.
+    AccessibilityWidget.init({ defaultLanguage: 'he' });
+    var btns = document.querySelectorAll('.a11y-widget__position-btn');
+    expect(btns[1].getAttribute('data-pos')).toBe('top-right');
+    expect(btns[3].getAttribute('data-pos')).toBe('bottom-right');
+  });
+
+  test('setPosition top-right from Hebrew mode applies right-side data-position', () => {
+    var w = AccessibilityWidget.init({ defaultLanguage: 'he' });
+    w.setPosition('top-right');
+    expect(document.querySelector('.a11y-widget').getAttribute('data-position')).toBe('top-right');
+    w.destroy();
+  });
+
+  test('setPosition bottom-right from Hebrew mode applies right-side data-position', () => {
+    var w = AccessibilityWidget.init({ defaultLanguage: 'he' });
+    w.setPosition('bottom-right');
+    expect(document.querySelector('.a11y-widget').getAttribute('data-position')).toBe('bottom-right');
+    w.destroy();
+  });
+
+  // ── RTL class + right position coexistence (CSS specificity regression) ──
+  //
+  // The CSS fix for the visual positioning bug relies on the selector
+  //   .a11y-widget--rtl[data-position="top-right"] / ["bottom-right"]
+  // having higher specificity (0,2,0) than the generic
+  //   .a11y-widget--rtl (0,1,0)
+  // so it can override `left: calc(...)` with `right: calc(...); left: auto`.
+  // For that selector to ever match, the root element MUST carry BOTH the RTL
+  // class AND the right-side data-position attribute simultaneously.
+  // These tests guard that invariant.
+
+  test('root carries a11y-widget--rtl AND data-position="top-right" simultaneously in Hebrew mode', () => {
+    var w = AccessibilityWidget.init({ defaultLanguage: 'he' });
+    w.setPosition('top-right');
+    var root = document.querySelector('.a11y-widget');
+    // Both must be present at the same time for the CSS override selector to match.
+    expect(root.classList.contains('a11y-widget--rtl')).toBe(true);
+    expect(root.getAttribute('data-position')).toBe('top-right');
+    w.destroy();
+  });
+
+  test('root carries a11y-widget--rtl AND data-position="bottom-right" simultaneously in Hebrew mode', () => {
+    var w = AccessibilityWidget.init({ defaultLanguage: 'he' });
+    w.setPosition('bottom-right');
+    var root = document.querySelector('.a11y-widget');
+    expect(root.classList.contains('a11y-widget--rtl')).toBe(true);
+    expect(root.getAttribute('data-position')).toBe('bottom-right');
+    w.destroy();
+  });
+
+  test('clicking top-right button in Hebrew keeps rtl class and sets top-right position', () => {
+    var w = AccessibilityWidget.init({ defaultLanguage: 'he' });
+    var btn = document.querySelector('.a11y-widget__position-btn[data-pos="top-right"]');
+    simulateClick(btn);
+    var root = document.querySelector('.a11y-widget');
+    expect(root.classList.contains('a11y-widget--rtl')).toBe(true);
+    expect(root.getAttribute('data-position')).toBe('top-right');
+    w.destroy();
+  });
+
+  test('clicking bottom-right button in Hebrew keeps rtl class and sets bottom-right position', () => {
+    var w = AccessibilityWidget.init({ defaultLanguage: 'he' });
+    var btn = document.querySelector('.a11y-widget__position-btn[data-pos="bottom-right"]');
+    simulateClick(btn);
+    var root = document.querySelector('.a11y-widget');
+    expect(root.classList.contains('a11y-widget--rtl')).toBe(true);
+    expect(root.getAttribute('data-position')).toBe('bottom-right');
+    w.destroy();
+  });
+
+  test('switching to Hebrew after selecting top-right position keeps both rtl class and data-position', () => {
+    var w = AccessibilityWidget.init();
+    w.setPosition('top-right');
+    w.setLanguage('he');
+    var root = document.querySelector('.a11y-widget');
+    expect(root.classList.contains('a11y-widget--rtl')).toBe(true);
+    expect(root.getAttribute('data-position')).toBe('top-right');
+    w.destroy();
+  });
+
+  test('switching language back to English while at top-right removes rtl class but keeps position', () => {
+    var w = AccessibilityWidget.init({ defaultLanguage: 'he' });
+    w.setPosition('top-right');
+    w.setLanguage('en');
+    var root = document.querySelector('.a11y-widget');
+    expect(root.classList.contains('a11y-widget--rtl')).toBe(false);
+    expect(root.getAttribute('data-position')).toBe('top-right');
+    w.destroy();
+  });
 });
 
 // ===========================================================================
